@@ -32,8 +32,26 @@ jobs:
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKM" --licenses > /dev/null || true
           "$SDKM" "ndk;${CATHEDRAI_NDK}" "cmake;3.22.1"
-      - name: Fetch llama.cpp (${{ env.LLAMA_TAG }})
-        run: git clone --depth 1 --branch "$LLAMA_TAG" https://github.com/ggml-org/llama.cpp third_party/llama.cpp
+      - name: Fetch llama.cpp (requested ${{ env.LLAMA_TAG }})
+        run: |
+          REPO=https://github.com/ggml-org/llama.cpp
+          REQ="$LLAMA_TAG"
+          USE="$REQ"
+          # llama.cpp does not publish a tag for every build number, so a missing
+          # tag falls back to the closest older one that exists.
+          if [[ "$REQ" =~ ^b[0-9]+$ ]]; then
+            git ls-remote --tags --refs "$REPO" 'refs/tags/b*' | sed 's#.*refs/tags/##' | grep -E '^b[0-9]+$' | sort -V > tags.txt
+            echo "Found $(wc -l < tags.txt) release tags"
+            if ! grep -qx "$REQ" tags.txt; then
+              N="${REQ#b}"
+              USE=$(awk -v n="$N" '{ if (substr($0,2)+0 <= n) last=$0 } END { print last }' tags.txt)
+              [ -z "$USE" ] && USE=$(head -n1 tags.txt)
+              echo "::warning::Tag $REQ does not exist upstream. Using closest older tag $USE instead."
+            fi
+          fi
+          echo "Building llama.cpp $USE"
+          git clone --depth 1 --branch "$USE" "$REPO" third_party/llama.cpp
+          echo "LLAMA_TAG=$USE" >> "$GITHUB_ENV"
       - run: npm install
       - run: npx cap add android
       - name: Inject native engine, diagnostics and build config
