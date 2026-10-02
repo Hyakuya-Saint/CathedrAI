@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0809">
+<title>CathedrAI</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;1,800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0B0809;--side:#110D0E;--pan:#1B1315;--pan2:#261B1E;--ln:#33262A;--red:#B3172B;--deep:#6B0F1A;--glow:#E8283F;--gold:#C9A24B;--mut:#8C7F82;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--bg);color:#fff;font:14px Inter,system-ui,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.msg,textarea,input{user-select:text;-webkit-user-select:text}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;outline:none}
+svg{flex:none}
+#app{display:flex;height:100%;position:relative}
+#side{width:260px;background:var(--side);border-right:1px solid var(--ln);display:flex;flex-direction:column;transition:width .3s ease;overflow:hidden;flex:none;z-index:10}
+#side.min{width:60px}
+.logo{display:flex;align-items:center;gap:10px;padding:14px 14px 10px;white-space:nowrap}
+.logo b{font:italic 800 18px Inter;letter-spacing:.12em}.logo b i{color:var(--glow)}
+.logo b:after{content:"";display:block;height:2px;background:linear-gradient(90deg,var(--gold),transparent);margin-top:2px}
+#side.min .logo b,#side.min .nav b,#side.min #hist{display:none}
+.nav{padding:6px 8px;display:flex;flex-direction:column;gap:2px}
+.nav button{padding:9px 10px;border-radius:8px;color:#a8999c;white-space:nowrap;width:100%}
+.nav button:active,.nav button:hover{background:var(--pan);color:#fff}
+.nav button.on{background:rgba(179,23,43,.18);color:#fff;box-shadow:inset 3px 0 0 var(--red)}
+#hist{flex:1;overflow:auto;padding:4px 8px 12px;border-top:1px solid var(--ln);margin-top:6px}
+.fh{display:flex;align-items:center;gap:6px;padding:12px 6px 4px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);cursor:pointer}
+.fh span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fh em{font-style:normal}
+.fh svg{transition:transform .2s}.fh.c .cv{transform:rotate(-90deg)}
+.ci{display:flex;align-items:center;gap:4px;padding:7px 8px;border-radius:8px;color:#a8999c;cursor:pointer}
+.ci span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ci button{color:#5c4c50;padding:2px}.ci button:hover,.fh button:hover{color:#fff}
+.ci:hover{background:var(--pan);color:#fff}.ci.on{background:var(--pan2);color:#fff;box-shadow:inset 2px 0 0 var(--gold)}
+#main{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
+header{height:56px;display:flex;align-items:center;gap:8px;padding:0 10px;border-bottom:1px solid var(--ln);flex:none}
+.slot{width:84px;height:42px;flex:none}
+#bmo{position:absolute;width:240px;height:120px;transform-origin:0 0;cursor:pointer;z-index:4;transition:transform .8s cubic-bezier(.34,1.56,.64,1);filter:drop-shadow(0 0 8px rgba(232,40,63,.45))}
+.sb{background:var(--pan);border:1px solid var(--ln);border-radius:10px;padding:7px 10px;font-size:13px;min-width:0;max-width:100%}
+.sb span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb:hover,.sb:active{border-color:var(--red)}
+input,textarea{background:var(--pan);color:#fff;border:1px solid var(--ln);border-radius:8px;padding:8px 10px;font:inherit}
+input:focus,textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 2px rgba(179,23,43,.3)}
+.ib{padding:7px;border-radius:8px;color:#a8999c}.ib:hover,.ib:active{background:var(--pan);color:#fff}
+#view{flex:1;overflow:auto;padding:16px}
+.wrap{max-width:780px;margin:0 auto}
+#hero{text-align:center;padding-top:200px}
+#hero h2{font:italic 800 24px Inter;letter-spacing:.06em;text-transform:uppercase}
+#hero p{color:var(--mut);margin-top:6px}
+.chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.chip{border:1px solid var(--ln);border-radius:99px;padding:4px 12px;font-size:12px;color:var(--mut)}
+.chip:hover{border-color:var(--red);color:#fff}.chip.on{background:var(--red);border-color:var(--red);color:#fff}
+.msg{margin:14px 0;line-height:1.6}
+.msg.u{background:var(--pan);border-left:3px solid var(--red);padding:10px 14px;border-radius:8px}
+.msg p{margin:6px 0}.msg h3{margin:12px 0 4px;color:var(--glow);font-size:15px}
+.msg ol,.msg ul{margin:8px 0;padding-left:26px}.msg li{margin:4px 0;padding-left:4px}.msg li::marker{color:var(--gold);font-weight:600}
+.msg blockquote{border-left:3px solid var(--deep);color:#b5a6a9;padding:2px 12px;margin:8px 0}
+.msg table{border-collapse:collapse;margin:8px 0}.msg td,.msg th{border:1px solid var(--ln);padding:5px 10px}.msg th{background:var(--pan)}
+.msg code{background:var(--pan);padding:1px 5px;border-radius:4px;color:#f3b4bb}
+pre{background:#050304;border:1px solid var(--ln);border-radius:8px;margin:8px 0;overflow-x:auto;position:relative}
+pre code{display:block;padding:12px;background:none;color:#e8dfe0}
+pre button{position:absolute;right:6px;top:6px;font-size:11px;color:var(--mut);border:1px solid var(--ln);border-radius:4px;padding:2px 6px}
+.ai{max-height:120px;border-radius:8px;margin:4px 6px 4px 0}
+.ach,.ch{display:inline-flex;align-items:center;gap:6px;background:#050304;border:1px solid var(--ln);border-radius:8px;padding:4px 8px;font-size:12px;margin:2px 4px 2px 0;max-width:200px}
+.ch img{width:26px;height:26px;object-fit:cover;border-radius:4px}.ch span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb{display:flex;gap:2px;margin-top:6px;flex-wrap:wrap}
+.tb button{font-size:12px;color:var(--mut);padding:4px 8px;border-radius:6px}.tb button:hover{background:var(--pan);color:#fff}
+#bar{padding:8px 12px 12px;flex:none}
+.box{max-width:780px;margin:0 auto;background:var(--pan);border:1px solid var(--ln);border-radius:14px;padding:8px}
+.box:focus-within{border-color:var(--red)}
+.box textarea{width:100%;border:0;background:none;resize:none;outline:0!important;box-shadow:none!important;min-height:40px;max-height:160px}
+.bn{display:flex;gap:8px;align-items:center;background:#050304;border-left:3px solid var(--gold);border-radius:6px;padding:5px 8px;margin-bottom:6px;color:#b5a6a9;font-size:12px}
+.bn span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row{display:flex;gap:2px;align-items:center}.row .sp{flex:1}
+.send{background:linear-gradient(135deg,var(--glow),var(--deep));padding:8px 14px;border-radius:10px;font-weight:600;font-size:13px;letter-spacing:.04em}
+.card{background:var(--pan);border:1px solid var(--ln);border-radius:12px;padding:12px;margin:10px 0}
+.card h4{display:flex;gap:8px;align-items:center}.card h4 small{margin-left:auto;font-weight:400}
+.card small{color:var(--mut)}
+.pr{height:5px;background:#050304;border-radius:3px;margin-top:8px;overflow:hidden}.pr div{height:100%;background:linear-gradient(90deg,var(--deep),var(--glow))}
+.btn{background:var(--red);padding:7px 13px;border-radius:8px;margin:8px 6px 0 0}.btn.g{background:var(--pan2)}.btn:disabled{opacity:.4}
+label{display:block;margin:12px 0 4px;color:var(--mut);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+input[type=range]{width:100%;accent-color:var(--red);padding:0}
+h1.t{font:italic 800 18px Inter;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px}
+.wrap>p{color:var(--mut)}
+#toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--red);padding:8px 16px;border-radius:8px;opacity:0;transition:.3s;pointer-events:none;z-index:70;max-width:90%}
+#modal{position:fixed;inset:0;background:#000b;display:none;place-items:center;z-index:50;padding:20px}
+#mc{background:var(--pan);border:1px solid var(--red);padding:18px;width:100%;max-width:380px;border-radius:14px}
+#mc h4{margin-bottom:8px}#mc p{color:#b5a6a9}
+.ac{display:flex;justify-content:flex-end;gap:6px;margin-top:12px}.ac .btn{margin:0}
+.opt{width:100%;padding:10px;border-radius:8px}.opt:hover{background:var(--pan2)}
+#pop{position:fixed;z-index:60;min-width:220px;max-width:min(320px,92vw);background:var(--pan);border:1px solid var(--ln);border-radius:14px;padding:6px;box-shadow:0 12px 40px #000c,0 0 0 1px rgba(179,23,43,.25);animation:pp .14s ease-out}
+@keyframes pp{from{opacity:0;transform:translateY(6px) scale(.97)}}
+.pi{width:100%;padding:10px;border-radius:10px;text-align:left}
+.pi span{flex:1;min-width:0}.pi b{display:block;font-weight:600}.pi small{display:block;color:var(--mut);font-size:12px}
+.pi:hover,.pi:active{background:var(--pan2)}.pi.on{color:var(--gold)}
+.stat{color:var(--mut);font-style:italic}.ms{color:var(--mut);font-size:11px;align-self:center;margin-left:6px}.er{color:#ff8a96;margin:6px 0;font-size:13px}
+.lg{background:#050304;border:1px solid var(--ln);border-radius:8px;padding:8px;font:11px/1.45 ui-monospace,monospace;white-space:pre-wrap;word-break:break-all;max-height:280px;overflow:auto;user-select:text;-webkit-user-select:text;margin:6px 0}
+.kv{display:flex;gap:8px;padding:3px 0;font-size:13px}.kv b{color:var(--mut);font-weight:400;min-width:110px}.kv span{user-select:text;-webkit-user-select:text;word-break:break-word}
+.ok{color:#6fd08c}.bad{color:#ff6b7a}details{margin:8px 0}summary{cursor:pointer;color:var(--gold);padding:4px 0}
+@media(max-width:720px){#side{position:absolute;height:100%}#side.min{width:0;border:0}#hero{padding-top:170px}.send{padding:8px 10px}}
+</style></head><body>
+<div id="app">
+<aside id="side"><div class="logo"><svg width="30" height="30" viewBox="0 0 32 32"><path d="M7 2h24l-5 28H2z" fill="#B3172B"/><path d="M16 6l2 6.5 6.5 2-6.5 2-2 7.5-2-7.5-6.5-2 6.5-2z" fill="#C9A24B"/></svg><b>Cathedr<i>AI</i></b></div>
+<nav class="nav" id="nav"></nav><div id="hist"></div></aside>
+<div id="main">
+<header><button class="ib" id="tg"></button><div class="slot" id="slot"></div><button class="sb" id="sel" onclick="savMenu(this)"></button><span style="flex:1"></span><button class="ib" id="newc"></button></header>
+<div id="view"></div>
+<div id="bar"><div class="box"><div id="ban"></div><textarea id="in" rows="1" placeholder="Command your Saint…"></textarea>
+<div class="row"><button class="ib" id="att" onclick="atMenu(this)"></button><button class="sb" id="sty" onclick="styMenu(this)"></button><button class="sb" id="fb" onclick="facMenu(this)"></button>
+<span class="sp"></span><button class="ib" id="mic"></button><button class="ib" id="live"></button><button class="send" id="send"></button></div></div></div>
+<canvas id="bmo" width="480" height="240"></canvas>
+</div></div>
+<input type="file" id="fPhoto" accept="image/*" multiple hidden><input type="file" id="fCam" accept="image/*" capture="environment" hidden><input type="file" id="fFile" multiple hidden><input type="file" id="fGguf" accept=".gguf" hidden>
+<div id="toast"></div><div id="modal"><div id="mc"></div></div>
+<script>
+const $=s=>document.querySelector(s),sleep=t=>new Promise(r=>setTimeout(r,t)),J=o=>JSON.parse(JSON.stringify(o));
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const NAT=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()),PL=n=>Capacitor.Plugins[n];
+const CA=()=>NAT?PL('Cathedra'):null;
+const JL=[];function dlog(t,m){const l=new Date().toISOString().slice(11,23)+' ['+t+'] '+m;JL.push(l);if(JL.length>300)JL.shift();try{const c=CA();c&&c.log({tag:'js:'+t,msg:String(m)})}catch(e){}}
+window.addEventListener('error',e=>dlog('error',(e.message||'')+' @'+String(e.filename||'').split('/').pop()+':'+e.lineno));
+window.addEventListener('unhandledrejection',e=>dlog('reject',(e.reason&&e.reason.message)||e.reason));
+class UserErr extends Error{}
+const IC={chat:'<path d="M4 5h16v11H9l-5 4z"/>',folder:'<path d="M3 6h7l2 2h9v11H3z"/>',saint:'<path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z"/>',crown:'<path d="M3 18L2 7l6 5 4-8 4 8 6-5-1 11z"/>',plus:'<path d="M12 5v14M5 12h14"/>',menu:'<path d="M4 7h16M4 12h10M4 17h16"/>',trash:'<path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/>',move:'<path d="M3 6h7l2 2h9v11H3zM9 14h7m-3-3l3 3-3 3"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',edit:'<path d="M4 20l1-5L16 4l4 4L9 19z"/>',copy:'<path d="M8 8h12v12H8zM4 16V4h12"/>',quote:'<path d="M5 18v-6h4V6M14 18v-6h4V6"/>',fork:'<path d="M7 4v16M7 9c0 6 10 1 10 7M17 4v5"/>',regen:'<path d="M20 12a8 8 0 10-3 6M20 5v7h-7"/>',mic:'<path d="M9 3h6v10H9zM5 11a7 7 0 0014 0M12 18v3"/>',live:'<path d="M2 12h4l2-7 4 14 3-10 2 3h5"/>',clip:'<path d="M17 9l-7 7a3 3 0 01-4-4l8-8a2 2 0 013 3l-8 8"/>',send:'<path d="M4 12L20 4l-6 16-3-7z"/>',stop:'<path d="M6 6h12v12H6z"/>',check:'<path d="M4 12l5 5L20 6"/>',chev:'<path d="M6 9l6 6 6-6"/>',img:'<path d="M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6"/>',cam:'<path d="M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 100-8 4 4 0 000 8z"/>',file:'<path d="M6 3h8l4 4v14H6zM14 3v4h4"/>',down:'<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>',link:'<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/>',undo:'<path d="M4 9h11a5 5 0 010 10H8M4 9l4-4M4 9l4 4"/>',bug:'<path d="M12 8a4 4 0 014 4v3a4 4 0 01-8 0v-3a4 4 0 014-4zM8 12H4M16 12h4M8 17l-3 2M16 17l3 2M9 6L7 4M15 6l2-2"/>'};
+const ic=(n,s=18)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="miter" stroke-linecap="square">${IC[n]}</svg>`;
+/* ---------- data ---------- */
+const FAC0={epi:{n:'Epithumetikon',d:'Creative · stories, dialogue, imagery',temp:1.1,top:.95,ctx:4096,gpu:20,think:.4},thu:{n:'Thumos',d:'Balanced · fast everyday work',temp:.7,top:.9,ctx:4096,gpu:20,think:1},log:{n:'Logistikon',d:'Deep reasoning · logic, analysis',temp:.3,top:.8,ctx:8192,gpu:30,think:2.4}};
+const mk=(id,n,s,file,url)=>({id,n,q:'Q4_K_M',s,file,url:'https://huggingface.co/'+url,st:'none',p:0});
+let models=[mk('m1','Llama 3.2 3B Instruct','~2.0 GB','Llama-3.2-3B-Instruct-Q4_K_M.gguf','bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf'),mk('m2','Qwen2.5 3B Instruct','~2.1 GB','qwen2.5-3b-instruct-q4_k_m.gguf','Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf'),mk('m3','Gemma 2 2B Instruct','~1.7 GB','gemma-2-2b-it-Q4_K_M.gguf','bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf'),mk('m4','Phi 3.5 Mini Instruct','~2.4 GB','Phi-3.5-mini-instruct-Q4_K_M.gguf','bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_K_M.gguf')];
+let folders=[{id:'g',name:'General'},{id:'f1',name:'Palace Heist Notes',on:true},{id:'f2',name:'Code Sidekick',on:false}],uid=1;
+let chats=[{t:'New chat',f:'g',m:[]},{t:'Heist route ideas',f:'f1',m:[]},{t:'Refactor helper',f:'f2',m:[]}];
+const rk=(n,d,p)=>({n,d,p,p0:p});
+let PR={aco:rk('Acolyte','Humble, eager helper','You are a humble, eager assistant.'),dea:rk('Deacon','Practical and dutiful','You are a dutiful, practical assistant.'),pri:rk('Priest','Warm counsel, clear guidance','You are a warm, guiding assistant.'),bis:rk('Bishop','Authoritative, measured','You are an authoritative, measured advisor.'),arc:rk('Archbishop','Strategic, far-sighted','You are a strategic, far-sighted advisor.'),car:rk('Cardinal','Supreme counsel, concise and exact','You are a concise, exacting supreme counsel.')};
+let FAC=J(FAC0),fac='thu',prof='pri',act=null,mem='',sty='Markdown',cfg={threads:0,maxTok:1024};
+const STY=[['Markdown','Standard formatted replies'],['Canvas','Artifacts / canvas view'],['Image','Image generation (needs diffusers)']];
+const K='cathedrai.v1';
+function save(){try{localStorage.setItem(K,JSON.stringify({folders,chats:chats.map(c=>({...c,m:c.m.map(x=>({r:x.r,t:x.t,s:x.s,err:x.err,a:(x.a||[]).map(a=>({name:a.name,size:a.size,text:a.text&&a.text.slice(0,30000)}))}))})),models:models.map(m=>({...m,st:m.st=='dl'?'none':m.st,p:0,ph:'',err:''})),FAC,fac,prof,act,PR,mem,uid,cfg}))}catch(e){}}
+try{const d=JSON.parse(localStorage.getItem(K));if(d)({folders,chats,models,FAC,fac,prof,act,PR,mem,uid,cfg}=d)}catch(e){}
+if(!cfg)cfg={threads:0,maxTok:1024};
+if(!chats.length)chats=[{t:'New chat',f:'g',m:[]}];
+let C=chats[0],view='chat',busy=false,stop=false,pend=null,att=[];
+const tabs=[['chat','chat','Discussion'],['proj','folder','Projects'],['hub','saint','Appoint Your Saint'],['sov','crown','Hierarchy'],['diag','bug','Diagnostics']];
+function toast(t){const e=$('#toast');e.textContent=t;e.style.opacity=1;clearTimeout(e.t);e.t=setTimeout(()=>e.style.opacity=0,2200)}
+const dlg=h=>{$('#mc').innerHTML=h;$('#modal').style.display='grid'},cl=()=>$('#modal').style.display='none';
+$('#modal').onclick=e=>{if(e.target.id=='modal')cl()};
+const acts=(l,f)=>`<div class="ac"><button class="btn g" onclick="cl()">Cancel</button><button class="btn" onclick="${f}">${l}</button></div>`;
+/* ---------- popover menus ---------- */
+let pop=null;
+function closeMenu(){if(pop){pop.remove();pop=null}document.removeEventListener('click',outside)}
+function outside(e){if(pop&&!pop.contains(e.target))closeMenu()}
+function menu(el,items,up){closeMenu();const r=el.getBoundingClientRect(),d=document.createElement('div');d.id='pop';
+d.innerHTML=items.map((it,i)=>`<button class="pi ${it.on?'on':''}" data-i="${i}">${it.ic?ic(it.ic):''}<span><b>${esc(it.l)}</b>${it.s?`<small>${esc(it.s)}</small>`:''}</span>${it.on?ic('check',16):''}</button>`).join('');
+document.body.appendChild(d);const w=d.offsetWidth,h=d.offsetHeight;
+let x=Math.min(Math.max(8,r.left),innerWidth-w-8),y=up?r.top-h-8:r.bottom+8;if(y<8)y=r.bottom+8;if(y+h>innerHeight-8)y=Math.max(8,r.top-h-8);
+d.style.left=x+'px';d.style.top=y+'px';
+d.onclick=e=>{const b=e.target.closest('.pi');if(b){const it=items[b.dataset.i];closeMenu();it.fn&&it.fn()}};pop=d;setTimeout(()=>document.addEventListener('click',outside),0)}
+function savMenu(el){const r=models.filter(m=>m.st=='ready');menu(el,r.length?r.map(m=>({l:m.n,s:m.q+' · '+m.s,on:m.id==act,ic:'saint',fn:()=>{act=m.id;nav();save()}})):[{l:'No Saint appointed',s:'Open Appoint Your Saint',ic:'down',fn:()=>go('hub')}])}
+function facMenu(el){menu(el,Object.keys(FAC).map(k=>({l:FAC[k].n,s:FAC[k].d,on:k==fac,ic:'saint',fn:()=>{fac=k;nav();if(view=='hub')render();save()}})),true)}
+function styMenu(el){menu(el,STY.map(s=>({l:s[0],s:s[1],on:s[0]==sty,fn:()=>{sty=s[0];nav()}})),true)}
+function atMenu(el){menu(el,[{l:'Photos',s:'From your gallery',ic:'img',fn:()=>$('#fPhoto').click()},{l:'Camera',s:'Take a picture',ic:'cam',fn:()=>$('#fCam').click()},{l:'Files',s:'Documents, code, anything',ic:'file',fn:()=>$('#fFile').click()}],true)}
+function rankMenu(el){menu(el,Object.keys(PR).map(k=>({l:PR[k].n,s:PR[k].d,on:k==prof,ic:'crown',fn:()=>{prof=k;render();save()}})))}
+/* ---------- BMO ---------- */
+const cv=$('#bmo'),cx=cv.getContext('2d'),slot=$('#slot');
+const D={h:1,y:0,r:0,o:0,c:.5,mx:0,w:34,ci:0,red:0,tl:0,hl:1,sk:0,mode:'o'},S=o=>({...D,...o});
+const E={idle:S({}),think:S({c:-.15,mx:14,w:30,tl:1}),talk:S({o:.5,c:.4,w:30}),happy:S({mode:'a',y:-4,o:.35,c:1.1,w:42}),sad:S({h:.8,y:10,r:.25,c:-1,w:28}),angry:S({h:.65,y:-2,r:-.52,c:0,w:40,red:1}),confused:S({mx:18,w:0,ci:9,tl:1}),surprised:S({h:1.4,w:0,ci:14,y:-3}),sleepy:S({h:.3,y:6,o:.2,c:.1,w:18}),love:S({mode:'h',o:.3,c:1.1,w:40}),wink:S({hl:.08,o:.2,c:.9,w:40}),smug:S({h:.55,y:3,r:.12,c:.9,mx:12,w:36}),scared:S({h:1.25,c:-.7,w:26,sk:1}),excited:S({mode:'a',o:.8,c:1,w:44}),dizzy:S({mode:'x',c:-.2,w:28,sk:.6,o:.1})};
+let emo='idle',Q={...E.idle},blink=0,nextBlink=2,talking=false,lastT=0,tt,lastE='';
+const setEmo=e=>emo=e,L=(a,b,k)=>a+(b-a)*k;
+function frame(t){t/=1000;const dt=Math.min(.05,t-lastT);lastT=t;const T=E[emo],f=1-Math.pow(.0005,dt);
+for(const k in T)if(typeof T[k]=='number')Q[k]=L(Q[k],T[k],f);Q.mode=T.mode;
+if(t>nextBlink){blink=.16;nextBlink=t+2.5+Math.random()*3}
+let b=0;if(blink>0){blink-=dt;b=Math.sin(Math.max(0,blink)/.16*Math.PI)}
+let open=Q.o;if(talking&&emo=='talk')open=.25+.55*Math.abs(Math.sin(t*13)*Math.sin(t*5.3+1));
+const bob=Math.sin(t*1.6)*3,br=1+Math.sin(t*2)*.02,wig=Math.sin(t*3.1)*1.2,shk=Math.sin(t*45)*Q.sk*1.8;
+cx.clearRect(0,0,480,240);cx.save();cx.scale(2,2);cx.translate(120+shk,60);cx.scale(br,br);cx.translate(-120,-60+bob);
+const col=`rgb(255,${Math.round(255-187*Q.red)},${Math.round(255-187*Q.red)})`;
+cx.fillStyle=cx.strokeStyle=col;cx.shadowColor=Q.red>.5?'#FF2A2A':'#B3172B';cx.shadowBlur=14;cx.lineCap='round';cx.lineWidth=6;
+for(const s of[-1,1]){let h=Q.h*(s<0?Q.hl:1),ey=Q.y;
+if(Q.tl>.01){if(s==1)h*=1-.45*Q.tl;else{ey-=7*Q.tl;h*=1+.15*Q.tl}}
+const sy=h*(1-b*.92),sx=1+b*.35+(1-h)*.2;
+cx.save();cx.translate(120+s*52+wig*s*.3,48+ey);cx.rotate(Q.r*-s);cx.scale(sx,sy);cx.beginPath();
+if(Q.mode=='a'){cx.arc(0,6,11,Math.PI*1.1,Math.PI*1.9);cx.stroke()}
+else if(Q.mode=='h'){const p=1+Math.sin(t*6)*.08;cx.scale(p,p);cx.moveTo(0,10);cx.bezierCurveTo(-20,-3,-11,-17,0,-6);cx.bezierCurveTo(11,-17,20,-3,0,10);cx.fill()}
+else if(Q.mode=='x'){cx.rotate(t*3*s);cx.moveTo(-8,-8);cx.lineTo(8,8);cx.moveTo(8,-8);cx.lineTo(-8,8);cx.stroke()}
+else{cx.ellipse(0,0,9,12,0,0,7);cx.fill()}
+cx.restore()}
+const mx=120+Q.mx,my=88,w=Q.w,cu=Q.c*18;cx.beginPath();
+if(Q.ci>1){cx.arc(mx,my,Q.ci*.8,0,7);cx.stroke()}
+else{cx.moveTo(mx-w,my-cu*.3);cx.quadraticCurveTo(mx,my+cu,mx+w,my-cu*.3);
+if(open>.04){cx.quadraticCurveTo(mx,my+cu+open*46,mx-w,my-cu*.3);cx.fillStyle='#0B0809';cx.fill()}cx.stroke();
+if(open>.25){cx.fillStyle='#B3172B';cx.shadowBlur=0;cx.beginPath();cx.ellipse(mx,my+cu*.5+open*17,w*.4,open*7,0,0,7);cx.fill()}}
+cx.restore();requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+cv.onclick=()=>{if(busy)return;const l=Object.keys(E).filter(k=>!['idle','think','talk',lastE].includes(k));lastE=l[Math.random()*l.length|0];setEmo(lastE);clearTimeout(tt);tt=setTimeout(()=>setEmo('idle'),2600)};
+function dock(){const hero=view=='chat'&&C.m.length==0,m=$('#main').getBoundingClientRect(),s0=slot.getBoundingClientRect(),vr=$('#view').getBoundingClientRect();
+cv.style.left=s0.left-m.left+'px';cv.style.top=s0.top-m.top+'px';
+if(hero){const s=Math.min(1.3,(vr.width-40)/240);cv.style.transform=`translate(${vr.left+vr.width/2-120*s-s0.left}px,${vr.top+30-s0.top}px) scale(${s})`}
+else cv.style.transform='scale(.35)'}
+new ResizeObserver(dock).observe($('#main'));$('#side').addEventListener('transitionend',dock);
+/* ---------- markdown ---------- */
+function md(s){const cb=[];s=s.replace(/```(\w*)\n?([\s\S]*?)```/g,(_,l,c)=>{cb.push(`<pre><button onclick="navigator.clipboard&&navigator.clipboard.writeText(this.nextSibling.textContent);toast('Copied')">copy · ${l||'text'}</button><code>${esc(c.replace(/\n$/,''))}</code></pre>`);return'\n\u0000'+(cb.length-1)+'\u0000\n'});
+const il=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>'),
+OL=/^\s*\d+[.)]\s/,UL=/^\s*[-*•]\s/,isB=l=>OL.test(l)||UL.test(l)||/^(#{1,3}\s|>|\||\u0000)/.test(l);
+let o='',A=s.split('\n'),i=0,m;
+while(i<A.length){const l=A[i];if(!l.trim()){i++;continue}
+if(m=l.match(/^\u0000(\d+)\u0000$/)){o+=cb[m[1]];i++}
+else if(m=l.match(/^#{1,3}\s+(.*)/)){o+=`<h3>${il(m[1])}</h3>`;i++}
+else if(OL.test(l)){const st=+l.match(/\d+/)[0];let it='';while(i<A.length&&OL.test(A[i]))it+=`<li>${il(A[i++].replace(/^\s*\d+[.)]\s+/,''))}</li>`;o+=`<ol start="${st}">${it}</ol>`}
+else if(UL.test(l)){let it='';while(i<A.length&&UL.test(A[i]))it+=`<li>${il(A[i++].replace(UL,''))}</li>`;o+=`<ul>${it}</ul>`}
+else if(l[0]=='>'){let q=[];while(i<A.length&&A[i][0]=='>')q.push(il(A[i++].replace(/^>\s?/,'')));o+=`<blockquote>${q.join('<br>')}</blockquote>`}
+else if(l[0]=='|'&&/^\|?[\s:|-]+\|?$/.test(A[i+1]||'')){const row=(r,t)=>'<tr>'+r.trim().replace(/^\||\|$/g,'').split('|').map(c=>`<${t}>${il(c.trim())}</${t}>`).join('')+'</tr>';let r=row(l,'th');i+=2;while(i<A.length&&A[i][0]=='|')r+=row(A[i++],'td');o+=`<div style="overflow-x:auto"><table>${r}</table></div>`}
+else{let p=[];while(i<A.length&&A[i].trim()&&(!isB(A[i])||!p.length))p.push(il(A[i++]));o+=`<p>${p.join('<br>')}</p>`}}
+return o}
+/* ---------- sidebar & folders ---------- */
+function nav(){$('#nav').innerHTML=tabs.map(([k,i,n])=>`<button class="${view==k?'on':''}" onclick="go('${k}')">${ic(i)}<b>${n}</b></button>`).join('');
+$('#hist').innerHTML=folders.filter(f=>f.id=='g'||f.on).map(f=>{const cs=chats.filter(c=>c.f==f.id);return`<div class="fh ${f.c?'c':''}" onclick="fold('${f.id}')"><span class="cv">${ic('chev',14)}</span>${ic('folder',14)}<span>${esc(f.name)}</span><em>${cs.length}</em><button onclick="event.stopPropagation();newChat('${f.id}')" title="New discussion here">${ic('plus',14)}</button></div>`+(f.c?'':cs.map(c=>`<div class="ci ${c==C&&view=='chat'?'on':''}" onclick="openChat(${chats.indexOf(c)})"><span>${esc(c.t)}</span><button onclick="event.stopPropagation();mv(${chats.indexOf(c)})">${ic('move',14)}</button><button onclick="event.stopPropagation();delChat(${chats.indexOf(c)})">${ic('trash',14)}</button></div>`).join(''))}).join('');
+const am=models.find(m=>m.id==act&&m.st=='ready');
+$('#sel').innerHTML=`${ic('saint',16)}<span>${am?esc(am.n):'Select Your Saint'}</span>${ic('chev',14)}`;
+$('#fb').innerHTML=`<span>${FAC[fac].n}</span>${ic('chev',14)}`;$('#sty').innerHTML=`<span>${sty}</span>${ic('chev',14)}`;save()}
+function fold(id){const f=folders.find(x=>x.id==id);f.c=!f.c;nav()}
+function go(v){view=v;nav();render();if(v=='diag')diagLoad();if(innerWidth<720)$('#side').classList.add('min')}
+function openChat(i){C=chats[i];go('chat')}
+function newChat(f='g'){const F=folders.find(x=>x.id==f);if(F&&f!='g'){F.on=true;F.c=false}C={t:'New chat',f,m:[]};chats.unshift(C);go('chat')}
+function delChat(i){dlg(`<h4>Delete discussion?</h4><p>“${esc(chats[i].t)}” will be removed permanently.</p>`+acts('Delete',`doDel(${i})`))}
+function doDel(i){const c=chats[i];chats.splice(i,1);if(c==C){if(!chats.length)chats.push({t:'New chat',f:'g',m:[]});C=chats[0]}cl();go(view)}
+function mv(i){dlg(`<h4>Move to…</h4>`+folders.map(f=>`<button class="opt" onclick="doMv(${i},'${f.id}')">${ic('folder',16)} ${esc(f.name)}${f.id=='g'||f.on?'':' <small>(stored)</small>'}</button>`).join('')+`<div class="ac"><button class="btn g" onclick="cl()">Cancel</button></div>`)}
+function doMv(i,f){chats[i].f=f;cl();go(view)}
+function tgl(id){const f=folders.find(x=>x.id==id);f.on=!f.on;toast(f.on?'Appointed: shown in discussions':'Stored');go('proj')}
+function newF(){dlg(`<h4>New project</h4><input id="fn" placeholder="Project name" style="width:100%">`+acts('Create','addF()'))}
+function addF(){const n=$('#fn').value.trim();if(!n)return;folders.push({id:'f'+uid++,name:n,on:true});cl();go('proj')}
+function ren(id){dlg(`<h4>Rename project</h4><input id="fn" value="${esc(folders.find(x=>x.id==id).name)}" style="width:100%">`+acts('Save',`doRen('${id}')`))}
+function doRen(id){const n=$('#fn').value.trim();if(n)folders.find(x=>x.id==id).name=n;cl();go('proj')}
+function delF(id){dlg(`<h4>Delete project?</h4><p>“${esc(folders.find(x=>x.id==id).name)}” is removed. Its discussions move to General.</p>`+acts('Delete',`doDelF('${id}')`))}
+function doDelF(id){chats.forEach(c=>{if(c.f==id)c.f='g'});folders=folders.filter(f=>f.id!=id);cl();go('proj')}
+/* ---------- model hub ---------- */
+const fmtB=b=>b>=1e9?(b/1e9).toFixed(2)+' GB':b>=1e6?(b/1e6).toFixed(0)+' MB':b>=1e3?(b/1e3).toFixed(0)+' KB':(b||0)+' B';
+const ptxt=m=>(m.ph||'')+(m.bt?' · '+fmtB(m.bt)+(m.tt>0?' / '+fmtB(m.tt):''):'')+(m.bps?' · '+fmtB(m.bps)+'/s':'');
+const prog=m=>{const p=$('#p'+m.id),t=$('#t'+m.id);if(p)p.style.width=m.p+'%';if(t)t.textContent=Math.round(m.p)+'% · '+ptxt(m)};
+const metaTxt=x=>[x.arch,x.quant,x.ctx?'native ctx '+x.ctx:'',x.layers?x.layers+' layers':''].filter(Boolean).join(' · ');
+try{CA()&&CA().addListener('progress',e=>{const m=models.find(x=>x.id==e.id);if(!m)return;m.ph=e.phase=='copy'?'Copying into the app':e.phase=='download'?'Downloading':'Checking the model file';m.bt=e.bytes;m.tt=e.total;m.bps=e.bps;m.p=e.total>0?e.bytes/e.total*100:0;prog(m)})}catch(e){}
+function ready(m){m.st='ready';m.p=100;m.err='';if(!models.find(x=>x.id==act&&x.st=='ready'))act=m.id;nav();if(view=='hub')render();toast(m.n+' is ready');save()}
+function modelDone(m,r){m.path=r.path;m.file=r.file;m.size=r.size;m.meta=r.meta;m.part=0;if(r.meta&&r.meta.quant)m.q=r.meta.quant;m.s=fmtB(r.size);dlog('model','ready '+m.file+' '+JSON.stringify(r.meta||{}));ready(m)}
+function failM(m,what,e){const msg=(e&&e.message)||String(e);dlog('model',what+' failed: '+msg);
+ if(m.custom&&!m.path)models=models.filter(x=>x!=m);else{m.st='none';m.p=0}
+ if(/cancel/i.test(msg)){nav();if(view=='hub')render();return toast(what+' cancelled')}
+ m.err=m.custom?'':what+' failed: '+msg;nav();if(view=='hub')render();
+ dlg(`<h4>${what} failed</h4><p style="user-select:text;word-break:break-word">${esc(msg)}</p><p style="margin-top:8px;font-size:12px">The details were saved. Open Diagnostics to see the full log.</p><div class="ac"><button class="btn g" onclick="cl()">Close</button><button class="btn" onclick="cl();go('diag')">Diagnostics</button></div>`)}
+async function dl(id){const m=models.find(x=>x.id==id);if(!m||!m.url)return;if(!CA())return toast('Downloads work inside the Android app');
+ m.st='dl';m.p=0;m.ph='Connecting';m.err='';render();dlog('dl','start '+m.file);
+ try{modelDone(m,await CA().downloadModel({id:m.id,url:m.url,file:m.file}))}catch(e){failM(m,'Download',e)}}
+function addCustom(name,size,url){const m={id:'c'+uid++,n:name.replace(/\.gguf$/i,''),q:((name.match(/(Q\d_[A-Z0-9_]+|F16|BF16)/i)||['?'])[0]).toUpperCase(),s:size>0?fmtB(size):'—',file:name,url:url||'',custom:1,st:'none',p:0};models.push(m);return m}
+async function importModel(){if(!CA())return toast('Importing works inside the Android app');
+ let f;try{f=await CA().pickModel()}catch(e){dlog('import','picker error '+(e.message||e));return toast('File picker failed: '+(e.message||e))}
+ if(!f||f.cancelled)return;
+ const m=addCustom(f.name,f.size);m.st='dl';m.ph='Starting';m.p=0;m.tt=f.size;render();dlog('import','picked '+f.name+' size='+f.size);
+ try{modelDone(m,await CA().importModel({id:m.id,uri:f.uri,name:f.name}))}catch(e){failM(m,'Import',e)}}
+function linkDlg(){dlg(`<h4>Download from link</h4><p>Paste a direct HuggingFace “resolve” link to a .gguf file.</p><input id="lu" placeholder="https://huggingface.co/.../resolve/main/model.gguf" style="width:100%;margin-top:10px">`+acts('Download','doLink()'))}
+function doLink(){const u=$('#lu').value.trim(),f=decodeURIComponent((u.split('?')[0].split('/').pop()||''));if(!/^https:\/\/.+\.gguf$/i.test(u.split('?')[0]))return toast('Needs an https link ending in .gguf');cl();const m=addCustom(f,0,u);dl(m.id)}
+const cancelX=()=>{CA()&&CA().cancelTransfer();toast('Cancelling…')};
+async function rm(id){const m=models.find(x=>x.id==id);if(CA()&&m.file){try{if(loaded&&loaded.path==m.path){await CA().unloadModel();loaded=null}await CA().deleteModel({file:m.file})}catch(e){}}
+if(m.custom)models=models.filter(x=>x!=m);else{m.st='none';m.p=0;m.meta=null;m.path=''}
+if(act==id)act=(models.find(x=>x.st=='ready')||{}).id||null;nav();render()}
+async function reconcile(){const c=CA();if(!c)return;try{const r=await c.listModels(),by={};r.models.forEach(f=>{if(!f.partial)by[f.file]=f});let ch=false;
+ for(const m of models){const f=m.file&&by[m.file];if(m.st=='ready'&&!f){m.st='none';m.p=0;m.path='';m.meta=null;if(act==m.id)act=null;ch=true;dlog('reconcile','missing on disk: '+m.file)}
+  else if(f&&!f.bad&&m.st!='ready'&&m.st!='dl'){m.st='ready';m.path=f.path;m.size=f.size;m.s=fmtB(f.size);m.meta=f.meta;if(f.meta&&f.meta.quant)m.q=f.meta.quant;ch=true;dlog('reconcile','recovered '+m.file)}
+  else if(f&&m.st=='ready'){m.path=f.path;m.meta=f.meta}}
+ for(const f of r.models){if(f.partial){const m=models.find(x=>x.file==f.file);if(m&&m.st=='none')m.part=f.size;continue}
+  if(f.bad){dlog('reconcile','unreadable '+f.file+': '+f.bad);continue}
+  if(!models.some(m=>m.file==f.file)){const m=addCustom(f.file,f.size);m.st='ready';m.path=f.path;m.meta=f.meta;if(f.meta&&f.meta.quant)m.q=f.meta.quant;ch=true;dlog('reconcile','found '+f.file)}}
+ if(!models.find(x=>x.id==act&&x.st=='ready')){const r0=models.find(x=>x.st=='ready');act=r0?r0.id:null}
+ nav();if(view=='hub')render();if(ch)save()}catch(e){dlog('reconcile','failed '+(e.message||e))}}
+const sl=(k,mn,mx,st,lb)=>`<label>${lb}: <b id="v_${k}">${FAC[fac][k]}</b></label><input type="range" min="${mn}" max="${mx}" step="${st}" value="${FAC[fac][k]}" oninput="FAC['${fac}'].${k}=+this.value;document.getElementById('v_${k}').textContent=this.value;save()">`;
+function revF(){FAC[fac]=J(FAC0[fac]);render();save();toast(FAC[fac].n+' reverted')}
+const mcard=m=>`<div class="card"><h4>${ic('saint')}${esc(m.n)}<small>${esc(m.q)} · ${esc(m.s)}</small></h4>`+(m.meta?`<small>${esc(metaTxt(m.meta))}</small>`:'')+(m.err?`<p class="er">${esc(m.err)}</p>`:'')+(m.part&&m.st=='none'?`<small>Partial download kept (${fmtB(m.part)}). Download resumes it.</small><br>`:'')+
+(m.st=='ready'?`<button class="btn" onclick="act='${m.id}';nav();render()" ${m.id==act?'disabled':''}>${m.id==act?'Appointed':'Appoint'}</button><button class="btn g" onclick="rm('${m.id}')">Remove</button>`:m.st=='dl'?`<div class="pr"><div id="p${m.id}" style="width:${m.p}%"></div></div><small id="t${m.id}">${Math.round(m.p)}% · ${esc(ptxt(m))}</small><br><button class="btn g" onclick="cancelX()">Cancel</button>`:`<button class="btn" onclick="dl('${m.id}')">${ic('down',16)}${m.part?'Resume':'Download'}</button>${m.custom?`<button class="btn g" onclick="rm('${m.id}')">Remove</button>`:''}`)+`</div>`;
+function hubView(){const dirty=JSON.stringify(FAC[fac])!=JSON.stringify(FAC0[fac]);
+return`<div class="wrap"><h1 class="t">Appoint Your Saint</h1><p>Models live in the app's private storage. Imports are streamed straight in, checked, and described automatically.</p>`+models.map(mcard).join('')+
+`<div class="card"><h4>${ic('plus')}Add your own</h4><p style="color:var(--mut);margin-top:4px">Pick a single-file .gguf from your phone. It is copied in with a progress bar and validated.</p><button class="btn" onclick="importModel()">${ic('file',16)}Import from storage</button><button class="btn g" onclick="linkDlg()">${ic('link',16)}From link</button></div>
+<div class="card"><h4>${ic('crown')}Hardware tuning · Faculties</h4><div class="chips" style="justify-content:flex-start">${Object.keys(FAC).map(k=>`<button class="chip ${k==fac?'on':''}" onclick="fac='${k}';nav();render()">${FAC[k].n}</button>`).join('')}</div><p style="color:var(--mut);margin-top:8px">${FAC[fac].d}</p>${sl('temp',0,2,.05,'Temperature')}${sl('top',0,1,.05,'Top-p')}${sl('ctx',512,32768,512,'Context size')}${sl('gpu',0,80,1,'GPU layers (ignored: CPU engine)')}${sl('think',.2,4,.1,'Thinking depth (x, not used yet)')}<button class="btn g" onclick="revF()" ${dirty?'':'disabled'}>${ic('undo',16)}Revert to default</button>
+<label>CPU threads: <b id="v_thr">${cfg.threads||'auto'}</b></label><input type="range" min="0" max="8" step="1" value="${cfg.threads}" oninput="cfg.threads=+this.value;document.getElementById('v_thr').textContent=this.value||'auto';save()">
+<label>Max reply length (tokens): <b id="v_mt">${cfg.maxTok}</b></label><input type="range" min="128" max="4096" step="128" value="${cfg.maxTok}" oninput="cfg.maxTok=+this.value;document.getElementById('v_mt').textContent=this.value;save()"></div></div>`}
+/* ---------- diagnostics ---------- */
+let DG=null,TST=[],tbusy=false;
+async function diagLoad(){const c=CA();if(!c){DG={preview:true}}else{try{DG=await c.getDiagnostics()}catch(e){DG={error:String(e.message||e)}}}if(view=='diag')dgPaint()}
+function dgPaint(){const V=$('#view'),y=V.scrollTop;V.innerHTML=diagView();V.scrollTop=y}
+const kv=(k,v,cls)=>`<div class="kv"><b>${k}</b><span class="${cls||''}">${esc(String(v))}</span></div>`;
+function diagReport(){const d=DG||{},o=[];o.push('CathedrAI diagnostics '+new Date().toISOString());
+ if(d.preview)o.push('(browser preview: no native data)');if(d.error)o.push('ERROR collecting: '+d.error);
+ const e=d.engine||{},dv=d.device||{},cp=d.cpu||{},st=d.storage||{};
+ o.push('\n== Engine ==','app '+e.appVersion+' | llama.cpp '+e.llamaTag+' | compiled for '+e.arch,'library loaded: '+e.loaded+(e.loadError?' ('+e.loadError+')':''),'model loaded: '+e.modelLoaded+' '+(e.modelPath||''),'system: '+(e.sysinfo||''));
+ o.push('\n== Device ==',(dv.model||'')+' | Android '+(dv.android||'')+' | '+(dv.abi||'')+' | cores '+dv.cores,'RAM total '+fmtB(dv.ramTotal)+' / available '+fmtB(dv.ramAvail)+' | lowMemory '+dv.lowMemory+' | heap class '+dv.memClass+'/'+dv.largeMemClass+' MB','CPU dotprod '+cp.dotprod+' i8mm '+cp.i8mm+' fp16 '+cp.fp16+' | '+(cp.features||'(unreadable)'));
+ o.push('\n== Storage ==','free '+fmtB(st.free)+' | models use '+fmtB(st.used)+' in '+st.dir);(st.files||[]).forEach(f=>o.push('  '+f.file+'  '+fmtB(f.size)));
+ o.push('\n== Models in app ==');models.forEach(m=>o.push(`  ${m.n} [${m.st}] ${m.file||''} ${m.path?'path ok':''} ${m.meta?metaTxt(m.meta):''} ${m.err||''}`));o.push('active: '+(act||'none'));
+ o.push('\n== OS exit records (newest first) ==',...(d.exits||[]));
+ o.push('\n== Incidents ==',d.incidents||'(none)');
+ if(TST.length){o.push('\n== Self-test ==');TST.forEach(t=>o.push((t.ok?'PASS ':'FAIL ')+t.n+' ('+t.ms+' ms): '+t.d))}
+ o.push('\n== Native log ==',d.nativeLog||'(empty)','\n== App log ==',d.appLog||'(empty)','\n== UI log ==',JL.slice(-60).join('\n'));return o.join('\n')}
+async function copyReport(){const t=diagReport();try{await navigator.clipboard.writeText(t);toast('Report copied')}catch(e){shareReport()}}
+async function shareReport(){const c=CA();if(!c)return toast('Sharing works inside the Android app');try{await c.shareText({text:diagReport()})}catch(e){toast('Share failed: '+(e.message||e))}}
+async function clearDiag(){const c=CA();if(c){await c.clearDiagnostics();JL.length=0;TST=[];await diagLoad();toast('Logs cleared')}}
+async function selfTest(){if(tbusy||busy)return toast('Busy: wait for the current task');if(!CA())return toast('Needs the Android app');tbusy=true;TST=[];
+ const step=async(n,fn)=>{const r={n,ok:false,d:'running…',ms:0},t0=performance.now();TST.push(r);dgPaint();try{r.d=(await fn())||'';r.ok=true}catch(e){r.d=String(e.message||e)}r.ms=Math.round(performance.now()-t0);dgPaint();return r.ok};
+ const am=models.find(x=>x.id==act&&x.st=='ready');dlog('selftest','start');
+ (await step('Engine library',async()=>{await diagLoad();const e=DG.engine;if(!e.loaded)throw new Error(e.loadError||'not loaded');return e.sysinfo.slice(0,160)}))&&
+ (await step('CPU compatibility',async()=>{const c=DG.cpu,a=DG.engine.arch;if(c.known&&/dotprod/.test(a)&&!c.dotprod)throw new Error('CPU has no dotprod but the engine needs it');return 'build '+a+' · dotprod '+c.dotprod+' · i8mm '+c.i8mm}))&&
+ (await step('Active model file',async()=>{if(!am)throw new Error('No Saint appointed');const r=await CA().listModels(),f=r.models.find(x=>x.file==am.file&&!x.partial);if(!f)throw new Error('File missing from app storage: '+am.file);if(f.bad)throw new Error('Header unreadable: '+f.bad);return am.file+' · '+fmtB(f.size)+' · '+metaTxt(f.meta)}))&&
+ (await step('Load model',async()=>{await ensureLoaded(am);return 'context '+loaded.info.ctx+' · '+loaded.info.desc+' · '+loaded.info.ms+' ms · template '+loaded.info.template}))&&
+ (await step('Generate 16 tokens',async()=>{let txt='';curGen={on:t=>txt+=t};try{const r=await CA().generate({messages:[{role:'user',content:'Say hello in five words.'}],temp:0,topP:1,topK:1,repeat:1,maxTokens:16,seed:1});if(!r.ok)throw new Error(r.error);return `${r.gen} tokens · ${r.tps} tok/s generating · ${r.pps} tok/s reading · “${txt.trim().slice(0,80)}”`}finally{curGen=null}}));
+ dlog('selftest','done '+TST.map(t=>(t.ok?'PASS':'FAIL')+':'+t.n).join(', '));tbusy=false;await diagLoad()}
+function diagView(){const d=DG;let h=`<div class="wrap"><h1 class="t">Diagnostics</h1><p>If anything breaks, tap <b>Share report</b> and send it over: it holds everything needed to see what happened.</p>
+<div><button class="btn" onclick="diagLoad()">Refresh</button><button class="btn" onclick="shareReport()">Share report</button><button class="btn g" onclick="copyReport()">Copy report</button><button class="btn g" onclick="selfTest()" ${tbusy?'disabled':''}>Run self-test</button><button class="btn g" onclick="clearDiag()">Clear logs</button></div>`;
+if(!d)return h+'<p style="margin-top:12px">Collecting…</p></div>';
+if(d.preview)return h+'<div class="card"><p>This is the browser preview. Diagnostics need the Android app.</p></div></div>';
+if(d.error)return h+`<div class="card"><p class="er">${esc(d.error)}</p></div></div>`;
+const e=d.engine,dv=d.device,cp=d.cpu,st=d.storage;
+if(TST.length)h+=`<div class="card"><h4>Self-test</h4>`+TST.map(t=>`<div class="kv"><b class="${t.ok?'ok':t.d=='running…'?'':'bad'}">${t.ok?'PASS':t.d=='running…'?'…':'FAIL'}</b><span>${esc(t.n)}: ${esc(t.d)}${t.ms?' ('+t.ms+' ms)':''}</span></div>`).join('')+`</div>`;
+h+=`<div class="card"><h4>Engine</h4>${kv('Library',e.loaded?'loaded':'FAILED: '+e.loadError,e.loaded?'ok':'bad')}${kv('Model in memory',e.modelLoaded?e.modelPath.split('/').pop():'none')}${kv('llama.cpp',e.llamaTag)}${kv('Compiled for',e.arch)}${kv('App',e.appVersion)}</div>
+<div class="card"><h4>Device</h4>${kv('Phone',dv.model)}${kv('Android',dv.android)}${kv('CPU',dv.abi+' · '+dv.cores+' cores')}${kv('CPU features',`dotprod ${cp.dotprod?'yes':'no'} · i8mm ${cp.i8mm?'yes':'no'} · fp16 ${cp.fp16?'yes':'no'}`,cp.known&&!cp.dotprod?'bad':'')}${kv('RAM',fmtB(dv.ramAvail)+' free of '+fmtB(dv.ramTotal)+(dv.lowMemory?' (LOW)':''))}${kv('Storage',fmtB(st.free)+' free · models use '+fmtB(st.used))}</div>
+<div class="card"><h4>Model files on disk</h4>${(st.files||[]).map(f=>kv(f.file,fmtB(f.size))).join('')||'<small>none</small>'}</div>
+<div class="card"><h4>Previous runs</h4>${d.incidents?`<div class="lg">${esc(d.incidents)}</div>`:'<small class="ok">No crashes or interrupted operations recorded.</small>'}<small>How Android says earlier runs ended:</small><div class="lg">${esc((d.exits||[]).join('\n'))}</div></div>
+<details open><summary>Engine log</summary><div class="lg">${esc(d.nativeLog||'(empty)')}</div></details><details><summary>App log</summary><div class="lg">${esc(d.appLog||'(empty)')}</div></details><details><summary>UI log</summary><div class="lg">${esc(JL.slice(-60).join('\n')||'(empty)')}</div></details></div>`;return h}
+async function startup(){const c=CA();if(!c)return;await reconcile();try{const n=await c.getStartupNotice();if(n&&n.op){dlg(`<h4>Last time ended unexpectedly</h4><p>CathedrAI was closed by Android while it was doing:</p><p style="margin:8px 0;user-select:text;word-break:break-word">${esc(n.op)}</p><p style="font-size:12px">${esc(n.exit||'')}</p><p style="margin-top:8px;font-size:12px">The details were saved in Diagnostics.</p><div class="ac"><button class="btn g" onclick="cl()">Dismiss</button><button class="btn" onclick="cl();go('diag')">Open Diagnostics</button></div>`)}}catch(e){}}
+/* ---------- views ---------- */
+function msgIn(m,i){if(m.r=='u')return `${attH(m.a)}${md(m.t||'')}<div class="tb"><button onclick="editp(${i})">${ic('edit',14)}Edit</button><button onclick="cp(${i})">${ic('copy',14)}Copy</button></div>`;
+ let t=m.t||'';if(m.live&&(t.match(/```/g)||[]).length%2)t+='\n```';
+ return (m.live&&!m.t?`<p class="stat">${esc(m.status||'…')}</p>`:md(t))+(m.live?'':`<div class="tb"><button onclick="regen(${i})">${ic('regen',14)}Regenerate</button><button onclick="quote(${i})">${ic('quote',14)}Quote</button><button onclick="cp(${i})">${ic('copy',14)}Copy MD</button><button onclick="fork(${i})">${ic('fork',14)}Fork</button>${m.s?`<small class="ms">${esc(m.s)}</small>`:''}</div>`)}
+function updMsg(i){const el=document.getElementById('m'+i),V=$('#view');if(!el||!C.m[i])return;const near=V.scrollHeight-V.scrollTop-V.clientHeight<140;el.innerHTML=msgIn(C.m[i],i);if(near)V.scrollTop=V.scrollHeight}
+const sched=f=>{if(sched.p)return;sched.p=1;requestAnimationFrame(()=>{sched.p=0;f()})};
+const attH=a=>(a||[]).map(x=>x.img?`<img class="ai" src="${x.img}">`:`<span class="ach">${ic('file',14)}${esc(x.name)}</span>`).join('');
+function render(){const V=$('#view');
+if(view=='chat'){const ms=C.m;
+V.innerHTML=ms.length?`<div class="wrap">${ms.map((m,i)=>`<div class="msg ${m.r=='u'?'u':'a'}" id="m${i}">${msgIn(m,i)}</div>`).join('')}</div>`
+:`<div id="hero"><h2>Greetings, Apostle.</h2><p>Appoint your Saint to begin command execution.</p><p style="font-size:12px">Serving as ${PR[prof].n} · ${FAC[fac].n}</p><div class="chips">${Object.keys(E).filter(k=>k!='talk').map(e=>`<button class="chip" onclick="setEmo('${e}')">${e}</button>`).join('')}</div></div>`;
+V.scrollTop=V.scrollHeight}
+else if(view=='diag')V.innerHTML=diagView();
+else if(view=='proj')V.innerHTML=`<div class="wrap"><h1 class="t">Projects</h1><p>Appoint a project to show its folder in Discussion. Stored projects stay here. Discussions outside any project live in General.</p>`+folders.filter(f=>f.id!='g').map(f=>{const cs=chats.filter(c=>c.f==f.id);return`<div class="card"><h4>${ic('folder')}${esc(f.name)}<small>${cs.length} discussions · ${f.on?'Appointed':'Stored'}</small></h4>${cs.map(c=>`<div class="ci" onclick="openChat(${chats.indexOf(c)})"><span>${esc(c.t)}</span></div>`).join('')}<button class="btn" onclick="tgl('${f.id}')">${f.on?'Unappoint':'Appoint'}</button><button class="btn g" onclick="newChat('${f.id}')">New discussion</button><button class="btn g" onclick="ren('${f.id}')">Rename</button><button class="btn g" onclick="delF('${f.id}')">Delete</button></div>`}).join('')+`<button class="btn" onclick="newF()">${ic('plus',16)}New project</button></div>`;
+else if(view=='hub')V.innerHTML=hubView();
+else{const p=PR[prof];V.innerHTML=`<div class="wrap"><h1 class="t">Hierarchy</h1><label>Rank</label><button class="sb" onclick="rankMenu(this)">${ic('crown',16)}<span>${p.n}</span>${ic('chev',14)}</button><p style="margin-top:6px">${p.d}</p><label>System prompt</label><textarea style="width:100%" rows="4" oninput="PR[prof].p=this.value;save()">${esc(p.p)}</textarea><button class="btn g" onclick="PR[prof].p=PR[prof].p0;render();save()" ${p.p==p.p0?'disabled':''}>${ic('undo',16)}Revert to default</button><label>Memory store</label><textarea style="width:100%" rows="3" placeholder="Facts CathedrAI should always remember…" oninput="mem=this.value;save()">${esc(mem)}</textarea></div>`}
+dock()}
+/* ---------- chat ---------- */
+let curGen=null,idleT=null,loaded=null;
+try{const c=CA();if(c){c.addListener('token',e=>{curGen&&curGen.on(e.t)});c.addListener('prefill',e=>{curGen&&curGen.pre&&curGen.pre(e.done,e.total)})}}catch(e){}
+function sysP(){let t=PR[prof].p;if(mem.trim())t+='\n\nAlways keep these facts in mind:\n'+mem.trim();return t}
+function histMsgs(ms,F){const out=[{role:'system',content:sysP()}],cap=Math.floor(F.ctx*1.5);
+ const add=(role,content)=>{const l=out[out.length-1];if(l.role==role)l.content+='\n\n'+content;else out.push({role,content})};
+ for(const m of ms){if(m.err)continue;
+  if(m.r=='u'){let t=m.t||'';for(const a of m.a||[]){if(a.text!=null)t+=`\n\n[Attached file: ${a.name}]\n${a.text.slice(0,cap)}${a.text.length>cap?'\n[…truncated]':''}`;else t+=`\n\n[Attached: ${a.name}. This kind of file cannot be read yet.]`}
+   add('user',t.trim()||'(empty)')}
+  else if(m.t&&m.t!='Stopped.')add('assistant',m.t)}
+ return out}
+async function ensureLoaded(am,say){const F=FAC[fac],thr=cfg.threads||0;
+ if(loaded&&loaded.path==am.path&&loaded.req==F.ctx&&loaded.thr==thr)return;
+ say&&say('Loading '+am.n+'… (the first load can take a few seconds)');dlog('engine','load '+am.file+' ctx='+F.ctx+' thr='+thr);loaded=null;
+ const r=await CA().loadModel({path:am.path,nCtx:F.ctx,threads:thr});if(!r.ok)throw new Error(r.error||'load failed');
+ loaded={path:am.path,req:F.ctx,thr,info:r};dlog('engine','loaded ctx='+r.ctx+' template='+r.template+' in '+r.ms+'ms')}
+async function unloadIdle(){if(busy||!loaded)return;try{await CA().unloadModel()}catch(e){}loaded=null;dlog('engine','idle unload')}
+function setBusy(b){busy=b;$('#send').innerHTML=b?ic('stop',16)+'STOP':'EXECUTE'+ic('send',16)}
+async function ask(q,at,files){if(busy)return;if(at==null&&!q.trim()&&!(files&&files.length))return;
+const c=C,F=FAC[fac];setBusy(true);stop=false;clearTimeout(idleT);
+if(at==null){c.m.push({r:'u',t:q,a:files||[]});if(c.m.length==1)c.t=(q||files[0].name).slice(0,28)}
+const idx=at??c.m.length,m={r:'a',t:'',status:'Preparing…',live:true};c.m[idx]=m;nav();render();
+const upd=()=>{if(C==c&&view=='chat')updMsg(idx)};let first=true;
+try{
+ if(!CA())throw new UserErr('The AI engine only runs inside the Android app. This browser preview has no model.');
+ const am=models.find(x=>x.id==act&&x.st=='ready');
+ if(!am)throw new UserErr('No Saint is appointed yet. Open **Appoint Your Saint**, then download or import a model.');
+ setEmo('think');
+ await ensureLoaded(am,s=>{m.status=s;upd()});
+ if(stop)throw new UserErr('Stopped.');
+ const hist=histMsgs(c.m.slice(0,idx),F);m.status='Reading your message…';upd();
+ curGen={on:t=>{if(first){first=false;m.status='';setEmo('talk');talking=true}m.t+=t;sched(upd)},pre:(d,t)=>{if(first){m.status=`Reading your message… ${d}/${t} tokens`;sched(upd)}}};
+ const r=await CA().generate({messages:hist,temp:F.temp,topP:F.top,topK:40,repeat:1.1,maxTokens:cfg.maxTok,seed:-1});
+ if(!r.ok)throw new Error(r.error||'generation failed');
+ if(!m.t)m.t=r.reason=='user'?'Stopped.':'(The Saint returned an empty reply.)';
+ m.s=`${r.gen} tokens · ${r.tps} tok/s`+(r.reused?` · ${r.reused} cached`:'')+(r.trimmed?` · ${r.trimmed} old messages dropped`:'')+(r.reason=='length'?' · reply limit reached':'')+(r.reason=='ctx'?' · context full':'');
+ dlog('chat',m.s)
+}catch(e){const msg=(e&&e.message)||String(e);dlog('chat','error: '+msg);
+ if(e instanceof UserErr)m.t=msg;else m.t='⚠ '+msg+'\n\nOpen **Diagnostics** to see the engine log.';
+ m.err=true;if(m.t=='Stopped.')m.err=false}
+curGen=null;m.live=false;m.status='';talking=false;setEmo('idle');setBusy(false);stop=false;save();
+idleT=setTimeout(unloadIdle,300000);if(C==c&&view=='chat')render()}
+function bn(){$('#ban').innerHTML=(pend?`<div class="bn"><span>${pend.k=='edit'?'Editing prompt (sending replaces it and later replies)':'Replying to: '+esc(pend.t)}</span><button class="ib" style="padding:2px" onclick="cancel()">${ic('x',14)}</button></div>`:'')+(att.length?`<div style="margin-bottom:6px">${att.map((a,i)=>`<span class="ch" title="${a.text!=null?'text read: '+a.text.length+' characters':'not readable by the Saint yet'}">${a.img?`<img src="${a.img}">`:ic('file',16)}<span>${esc(a.name)} · ${a.text!=null?'read':'not read'}</span><button onclick="rmA(${i})">${ic('x',12)}</button></span>`).join('')}</div>`:'')}
+const rmA=i=>{att.splice(i,1);bn()};
+function cancel(){if(pend&&pend.k=='edit')$('#in').value='';pend=null;att=[];bn()}
+async function readAtt(f){const o={name:f.name,size:f.size,img:f.type.startsWith('image/')?URL.createObjectURL(f):null};
+ if(!o.img&&(/^text\//.test(f.type)||/\.(txt|md|json|csv|tsv|js|ts|jsx|tsx|py|java|kt|c|h|cpp|hpp|cs|go|rs|rb|php|html|css|xml|ya?ml|toml|ini|sh|sql|log|tex|swift|lua|r)$/i.test(f.name))&&f.size<=600000){try{const t=await f.text();if(!/\u0000/.test(t.slice(0,2000)))o.text=t}catch(e){}}
+ return o}
+for(const id of['fPhoto','fCam','fFile'])$('#'+id).onchange=async e=>{const fs=[...e.target.files];e.target.value='';let bad=0;for(const f of fs){const a=await readAtt(f);if(a.text==null)bad++;att.push(a)}bn();if(bad)toast('Only text and code files can be read for now')};
+function send(){if(busy){stop=true;try{CA()&&CA().stopGeneration()}catch(e){}return}let v=$('#in').value.trim();if(!v&&!att.length)return;
+if(pend){if(pend.k=='edit')C.m.splice(pend.i);else v='> '+pend.t+'\n\n'+v}
+const f=att;pend=null;att=[];bn();$('#in').value='';$('#in').style.height='auto';view='chat';ask(v,null,f)}
+function regen(i){if(i>0)ask(C.m[i-1].t||'',i)}
+function quote(i){pend={k:'quote',t:C.m[i].t.replace(/[#>*`\n]+/g,' ').trim().slice(0,70)};bn();$('#in').focus()}
+function editp(i){pend={k:'edit',i};bn();$('#in').value=C.m[i].t;$('#in').focus()}
+function cp(i){navigator.clipboard&&navigator.clipboard.writeText(C.m[i].t);toast('Copied')}
+function fork(i){C={t:'Branch: '+C.t,f:C.f,m:C.m.slice(0,i+1).map(x=>({...x}))};chats.unshift(C);go('chat');toast('Thread forked')}
+const ins=(t,s)=>t.setRangeText(s,t.selectionStart,t.selectionEnd,'end');
+$('#in').onkeydown=e=>{if(e.key=='Escape'){cancel();return}
+if(e.key=='Enter'&&!e.shiftKey){e.preventDefault();send()}
+else if(e.key=='Enter'){const t=e.target,ln=t.value.slice(0,t.selectionStart).split('\n').pop(),n=ln.match(/^(\s*)(\d+)([.)])\s/),u=ln.match(/^(\s*)([-*•])\s/);
+if(n){e.preventDefault();ins(t,'\n'+n[1]+(+n[2]+1)+n[3]+' ')}else if(u){e.preventDefault();ins(t,'\n'+u[1]+u[2]+' ')}}};
+$('#in').oninput=e=>{const t=e.target;t.style.height='auto';t.style.height=Math.min(t.scrollHeight,160)+'px'};
+$('#tg').innerHTML=ic('menu',20);$('#newc').innerHTML=ic('plus',20);$('#att').innerHTML=ic('clip',20);$('#mic').innerHTML=ic('mic');$('#live').innerHTML=ic('live');setBusy(false);
+$('#send').onclick=send;$('#newc').onclick=()=>newChat('g');
+$('#tg').onclick=()=>{$('#side').classList.toggle('min');dock()};
+$('#mic').onclick=()=>toast('Dictation: coming later');
+$('#live').onclick=()=>dlg('<h4>3D Live Talk Space</h4><p>Reserved for a later stage.</p><div class="ac"><button class="btn" onclick="cl()">Understood</button></div>');
+/* native: back button + status bar */
+if(NAT){const A=PL('App');A&&A.addListener('backButton',()=>{if(pop)return closeMenu();if($('#modal').style.display=='grid')return cl();if(pend||att.length)return cancel();if(view!='chat')return go('chat');A.exitApp()});
+try{PL('StatusBar').setBackgroundColor({color:'#0B0809'});PL('StatusBar').setStyle({style:'DARK'})}catch(e){}}
+if(innerWidth<720)$('#side').classList.add('min');
+nav();render();document.fonts&&document.fonts.ready.then(dock);startup();
+</script></body></html>

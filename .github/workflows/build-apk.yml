@@ -1,0 +1,50 @@
+name: Build APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      llama_tag:
+        description: "llama.cpp release tag to build the engine from (e.g. b6200)"
+        required: false
+      arm_arch:
+        description: "CPU target. Default armv8.2-a+dotprod; use armv8-a for very old phones, armv8.6-a+dotprod+i8mm for new flagships"
+        required: false
+env:
+  LLAMA_TAG: ${{ inputs.llama_tag || vars.LLAMA_TAG || 'b6200' }}
+  CATHEDRAI_ARM_ARCH: ${{ inputs.arm_arch || vars.CATHEDRAI_ARM_ARCH || 'armv8.2-a+dotprod' }}
+  CATHEDRAI_NDK: "27.2.12479018"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install NDK and CMake
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "ndk;${CATHEDRAI_NDK}" "cmake;3.22.1"
+      - name: Fetch llama.cpp (${{ env.LLAMA_TAG }})
+        run: git clone --depth 1 --branch "$LLAMA_TAG" https://github.com/ggml-org/llama.cpp third_party/llama.cpp
+      - run: npm install
+      - run: npx cap add android
+      - name: Inject native engine, diagnostics and build config
+        run: python3 native-android/patch-android.py
+      - run: npx cap sync android
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cathedrai-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk

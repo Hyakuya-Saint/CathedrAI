@@ -1,0 +1,7 @@
+{
+  "appId": "com.cathedrai.app",
+  "appName": "CathedrAI",
+  "webDir": "www",
+  "backgroundColor": "#0B0809",
+  "server": { "androidScheme": "https" }
+}
