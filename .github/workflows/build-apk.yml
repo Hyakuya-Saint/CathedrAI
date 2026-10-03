@@ -5,13 +5,13 @@ on:
   workflow_dispatch:
     inputs:
       llama_tag:
-        description: "llama.cpp release tag to build the engine from (e.g. b6200)"
+        description: "llama.cpp release tag to build the engine from (e.g. b9842; Gemma 4 needs b9842 or newer)"
         required: false
       arm_arch:
         description: "CPU target. Default armv8.2-a+dotprod; use armv8-a for very old phones, armv8.6-a+dotprod+i8mm for new flagships"
         required: false
 env:
-  LLAMA_TAG: ${{ inputs.llama_tag || vars.LLAMA_TAG || 'b6200' }}
+  LLAMA_TAG: ${{ inputs.llama_tag || vars.LLAMA_TAG || 'b9842' }}
   CATHEDRAI_ARM_ARCH: ${{ inputs.arm_arch || vars.CATHEDRAI_ARM_ARCH || 'armv8.2-a+dotprod' }}
   CATHEDRAI_NDK: "27.2.12479018"
 jobs:
@@ -57,10 +57,20 @@ jobs:
       - name: Inject native engine, diagnostics and build config
         run: python3 native-android/patch-android.py
       - run: npx cap sync android
-      - name: Build debug APK
+      - name: Build debug APK (with image support)
+        id: build1
+        continue-on-error: true
         working-directory: android
         run: |
           chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+      - name: Retry without image support (only runs if the first build failed)
+        if: steps.build1.outcome == 'failure'
+        working-directory: android
+        run: |
+          echo "::warning::The build with image support failed; retrying without it."
+          touch app/src/main/cpp/vision.off
+          rm -rf app/.cxx app/build/intermediates/cxx
           ./gradlew assembleDebug --stacktrace
       - uses: actions/upload-artifact@v4
         with:

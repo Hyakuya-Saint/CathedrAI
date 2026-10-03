@@ -5,6 +5,7 @@ Run after `npx cap add android` (the android/ folder is generated in CI and is n
 It injects everything native into the generated project:
   * Java sources (plugin, diagnostics, GGUF reader, MainActivity)   -> app/src/main/java/...
   * the C++ engine + CMakeLists                                     -> app/src/main/cpp
+  * launcher icons (native-android/res)                             -> app/src/main/res
   * Gradle: NDK version, CMake hook, arm64-only, Release engine     -> app/build.gradle
   * minSdk 28 (llama.cpp needs a newer libc than Capacitor's default)-> variables.gradle
   * manifest: camera permission + largeHeap
@@ -26,7 +27,7 @@ TAG = os.environ.get("LLAMA_TAG", "unknown")
 NDK = os.environ.get("CATHEDRAI_NDK", "27.2.12479018")
 CMAKE = os.environ.get("CATHEDRAI_CMAKE", "3.22.1")
 LLAMA = os.path.join(ROOT, "third_party", "llama.cpp")
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 
 def die(msg):
@@ -71,6 +72,20 @@ cpp_dst = os.path.join(APP, "src", "main", "cpp")
 os.makedirs(cpp_dst, exist_ok=True)
 for fn in os.listdir(os.path.join(HERE, "cpp")):
     shutil.copy(os.path.join(HERE, "cpp", fn), os.path.join(cpp_dst, fn))
+
+# ---------------------------------------------------------------- launcher icon
+# Capacitor's template ships an adaptive icon (mipmap-anydpi-v26) that wins over plain PNGs on Android 8+,
+# so it is removed and the app's own PNG icons are copied in.
+res_src = os.path.join(HERE, "res")
+res_dst = os.path.join(APP, "src", "main", "res")
+if os.path.isdir(res_src):
+    for d in ("mipmap-anydpi-v26", "mipmap-anydpi"):
+        shutil.rmtree(os.path.join(res_dst, d), ignore_errors=True)
+    for d in os.listdir(res_src):
+        os.makedirs(os.path.join(res_dst, d), exist_ok=True)
+        for fn in os.listdir(os.path.join(res_src, d)):
+            shutil.copy(os.path.join(res_src, d, fn), os.path.join(res_dst, d, fn))
+    print("launcher icons installed")
 
 # ---------------------------------------------------------------- app/build.gradle
 gp = os.path.join(APP, "build.gradle")

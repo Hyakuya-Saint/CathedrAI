@@ -29,11 +29,14 @@ final class LlamaBridge {
     static native String nSystemInfo();
 
     /** Returns a JSON object: {"ok":true,...} or {"ok":false,"error":"..."}. */
-    static native String nLoad(String path, int nCtx, int nThreads);
+    static native String nLoad(String path, int nCtx, int nThreads, String projPath);
+
+    static native boolean nVisionCompiled();
 
     /** Returns a JSON object with statistics, or {"ok":false,"error":"..."}. Blocks until finished. */
     static native String nGenerate(String[] roles, byte[][] contents, float temp, float topP, int topK,
-                                   float repeatPenalty, int maxNew, int seed, Callback cb);
+                                   float repeatPenalty, int maxNew, int seed,
+                                   byte[][] imgs, int[] imgW, int[] imgH, Callback cb);
 
     static native void nStop();
 

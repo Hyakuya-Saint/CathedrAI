@@ -33,6 +33,23 @@ set(GGML_CPU_ARM_ARCH "${CATHEDRAI_ARM_ARCH}" CACHE STRING "" FORCE)
 
 add_subdirectory(${LLAMA_DIR} llama-build)
 
+# Image understanding (libmtmd). The CI retries without it if this ever fails to build:
+# creating a file named vision.off next to this CMakeLists switches it off.
+set(CATHEDRAI_VISION_ON OFF)
+if(NOT EXISTS ${CMAKE_CURRENT_LIST_DIR}/vision.off AND EXISTS ${LLAMA_DIR}/tools/mtmd/CMakeLists.txt)
+  add_subdirectory(${LLAMA_DIR}/tools/mtmd mtmd-build)
+  set(CATHEDRAI_VISION_ON ON)
+endif()
+
 add_library(cathedrai SHARED cathedrai_jni.cpp)
 target_include_directories(cathedrai PRIVATE ${LLAMA_DIR}/include ${LLAMA_DIR}/ggml/include)
 target_link_libraries(cathedrai PRIVATE llama ggml log android)
+
+if(CATHEDRAI_VISION_ON)
+  target_compile_definitions(cathedrai PRIVATE CATHEDRAI_VISION=1)
+  target_include_directories(cathedrai PRIVATE ${LLAMA_DIR}/tools/mtmd)
+  target_link_libraries(cathedrai PRIVATE mtmd)
+  message(STATUS "CathedrAI: image support ON")
+else()
+  message(STATUS "CathedrAI: image support OFF")
+endif()

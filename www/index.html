@@ -3,6 +3,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B0809">
 <title>CathedrAI</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;1,800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0B0809;--side:#110D0E;--pan:#1B1315;--pan2:#261B1E;--ln:#33262A;--red:#B3172B;--deep:#6B0F1A;--glow:#E8283F;--gold:#C9A24B;--mut:#8C7F82;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -25,8 +27,8 @@ svg{flex:none}
 .nav button.on{background:rgba(179,23,43,.18);color:#fff;box-shadow:inset 3px 0 0 var(--red)}
 #hist{flex:1;overflow:auto;padding:4px 8px 12px;border-top:1px solid var(--ln);margin-top:6px}
 .fh{display:flex;align-items:center;gap:6px;padding:12px 6px 4px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);cursor:pointer}
-.fh span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fh em{font-style:normal}
-.fh svg{transition:transform .2s}.fh.c .cv{transform:rotate(-90deg)}
+.fh>span:not(.cv){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fh em{font-style:normal;flex:none}.fh>button{flex:none;padding:2px}
+.fh .cv{flex:none;display:inline-flex;width:14px;height:14px;transition:transform .2s}.fh.c .cv{transform:rotate(-90deg)}
 .ci{display:flex;align-items:center;gap:4px;padding:7px 8px;border-radius:8px;color:#a8999c;cursor:pointer}
 .ci span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ci button{color:#5c4c50;padding:2px}.ci button:hover,.fh button:hover{color:#fff}
@@ -96,20 +98,44 @@ h1.t{font:italic 800 18px Inter;letter-spacing:.14em;text-transform:uppercase;ma
 .lg{background:#050304;border:1px solid var(--ln);border-radius:8px;padding:8px;font:11px/1.45 ui-monospace,monospace;white-space:pre-wrap;word-break:break-all;max-height:280px;overflow:auto;user-select:text;-webkit-user-select:text;margin:6px 0}
 .kv{display:flex;gap:8px;padding:3px 0;font-size:13px}.kv b{color:var(--mut);font-weight:400;min-width:110px}.kv span{user-select:text;-webkit-user-select:text;word-break:break-word}
 .ok{color:#6fd08c}.bad{color:#ff6b7a}details{margin:8px 0}summary{cursor:pointer;color:var(--gold);padding:4px 0}
+
+.ach{cursor:pointer}.ach:hover,.ch:hover{border-color:var(--red)}.ch{cursor:pointer}
+.srcs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.srcs a{font-size:12px;color:var(--gold);border:1px solid var(--ln);border-radius:99px;padding:3px 10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:none;display:inline-block}
+.cvcard{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--pan);border:1px solid var(--ln);border-left:3px solid var(--gold);border-radius:10px;padding:10px 12px;margin:8px 0}.cvcard:hover{border-color:var(--red)}.cvcard b{display:block}.cvcard small{color:var(--mut)}
+#cvp,#vw{position:fixed;inset:0;background:var(--bg);z-index:40;display:none;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+#vw{z-index:45;background:#000e}
+.cvh{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--ln);flex:none}.cvh b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.tabs{display:flex;gap:2px;background:#050304;border-radius:8px;padding:2px}.tabs button{padding:5px 10px;border-radius:6px;font-size:12px;color:var(--mut)}.tabs button.on{background:var(--red);color:#fff}
+#cvb{flex:1;min-height:0;display:flex;flex-direction:column}
+#cvb iframe{flex:1;width:100%;border:0;background:#fff}
+#cvb textarea.code{flex:1;width:100%;border:0;border-radius:0;font:12px/1.5 ui-monospace,monospace;resize:none;background:#050304;white-space:pre}
+.dtb{display:flex;gap:4px;padding:6px 10px;border-bottom:1px solid var(--ln);flex-wrap:wrap}.dtb button{padding:5px 10px;border:1px solid var(--ln);border-radius:6px;font-size:13px}
+#doc{flex:1;overflow:auto;padding:22px 18px 60px;background:#f7f3ee;color:#1b1415;line-height:1.7;user-select:text;-webkit-user-select:text;outline:0}
+#doc>*{max-width:720px;margin-left:auto;margin-right:auto}#doc h3{color:#6B0F1A;font-size:20px;margin:18px auto 6px}#doc code{background:#e9e1d8;color:#6B0F1A}#doc td,#doc th{border-color:#cdbfb3}#doc th{background:#e9e1d8}#doc blockquote{color:#555}
+.stg{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:12px;background:#050304}
+.sld{width:min(100%,calc((100vh - 190px)*1.7778));aspect-ratio:16/9;background:linear-gradient(135deg,#1B1315,#0B0809);border:1px solid var(--ln);border-top:4px solid var(--red);border-radius:10px;padding:4% 6%;overflow:auto;user-select:text;-webkit-user-select:text;outline:0;font-size:clamp(11px,2.6vw,20px);line-height:1.5}
+.sld h3{color:var(--gold);font-size:1.7em;margin:0 0 .4em}.sld li{margin:.25em 0}
+.snav{display:flex;align-items:center;justify-content:center;gap:12px;padding:8px;border-top:1px solid var(--ln)}
+#vwb{flex:1;min-height:0;overflow:auto;padding:14px;display:flex;justify-content:center}#vwb img{max-width:100%;max-height:100%;object-fit:contain;margin:auto;border-radius:8px}
+#vwb pre.t{white-space:pre-wrap;word-break:break-word;user-select:text;-webkit-user-select:text;background:#050304;border:1px solid var(--ln);border-radius:8px;padding:12px;width:100%;max-width:820px;font:12px/1.55 ui-monospace,monospace;height:max-content}
+.gb{position:relative}.gb i{position:absolute;right:3px;top:3px;width:7px;height:7px;border-radius:50%;background:var(--gold)}.gb i.d{background:var(--glow)}
+.hint{color:var(--mut);font-size:12px;margin-top:6px}
 @media(max-width:720px){#side{position:absolute;height:100%}#side.min{width:0;border:0}#hero{padding-top:170px}.send{padding:8px 10px}}
 </style></head><body>
 <div id="app">
-<aside id="side"><div class="logo"><svg width="30" height="30" viewBox="0 0 32 32"><path d="M7 2h24l-5 28H2z" fill="#B3172B"/><path d="M16 6l2 6.5 6.5 2-6.5 2-2 7.5-2-7.5-6.5-2 6.5-2z" fill="#C9A24B"/></svg><b>Cathedr<i>AI</i></b></div>
+<aside id="side"><div class="logo"><img src="icon.png" width="30" height="30" alt="" style="border-radius:7px;flex:none"><b>Cathedr<i>AI</i></b></div>
 <nav class="nav" id="nav"></nav><div id="hist"></div></aside>
 <div id="main">
 <header><button class="ib" id="tg"></button><div class="slot" id="slot"></div><button class="sb" id="sel" onclick="savMenu(this)"></button><span style="flex:1"></span><button class="ib" id="newc"></button></header>
 <div id="view"></div>
 <div id="bar"><div class="box"><div id="ban"></div><textarea id="in" rows="1" placeholder="Command your Saint…"></textarea>
-<div class="row"><button class="ib" id="att" onclick="atMenu(this)"></button><button class="sb" id="sty" onclick="styMenu(this)"></button><button class="sb" id="fb" onclick="facMenu(this)"></button>
+<div class="row"><button class="ib" id="att" onclick="atMenu(this)"></button><button class="sb" id="sty" onclick="styMenu(this)"></button><button class="sb" id="fb" onclick="facMenu(this)"></button><button class="ib gb" id="web" onclick="webMenu(this)" title="Web search"></button>
 <span class="sp"></span><button class="ib" id="mic"></button><button class="ib" id="live"></button><button class="send" id="send"></button></div></div></div>
 <canvas id="bmo" width="480" height="240"></canvas>
 </div></div>
 <input type="file" id="fPhoto" accept="image/*" multiple hidden><input type="file" id="fCam" accept="image/*" capture="environment" hidden><input type="file" id="fFile" multiple hidden><input type="file" id="fGguf" accept=".gguf" hidden>
+<div id="cvp"><div class="cvh"><button class="ib" onclick="cvClose()" id="cvx"></button><b id="cvt"></b><span style="flex:1"></span><div class="tabs" id="cvtabs"></div><button class="ib" id="cvsv" onclick="cvSave(this)"></button></div><div id="cvb"></div></div>
+<div id="vw"><div class="cvh"><button class="ib" onclick="vwClose()" id="vwx"></button><b id="vwt"></b></div><div id="vwb"></div></div>
 <div id="toast"></div><div id="modal"><div id="mc"></div></div>
 <script>
 const $=s=>document.querySelector(s),sleep=t=>new Promise(r=>setTimeout(r,t)),J=o=>JSON.parse(JSON.stringify(o));
@@ -120,22 +146,28 @@ const JL=[];function dlog(t,m){const l=new Date().toISOString().slice(11,23)+' [
 window.addEventListener('error',e=>dlog('error',(e.message||'')+' @'+String(e.filename||'').split('/').pop()+':'+e.lineno));
 window.addEventListener('unhandledrejection',e=>dlog('reject',(e.reason&&e.reason.message)||e.reason));
 class UserErr extends Error{}
-const IC={chat:'<path d="M4 5h16v11H9l-5 4z"/>',folder:'<path d="M3 6h7l2 2h9v11H3z"/>',saint:'<path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z"/>',crown:'<path d="M3 18L2 7l6 5 4-8 4 8 6-5-1 11z"/>',plus:'<path d="M12 5v14M5 12h14"/>',menu:'<path d="M4 7h16M4 12h10M4 17h16"/>',trash:'<path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/>',move:'<path d="M3 6h7l2 2h9v11H3zM9 14h7m-3-3l3 3-3 3"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',edit:'<path d="M4 20l1-5L16 4l4 4L9 19z"/>',copy:'<path d="M8 8h12v12H8zM4 16V4h12"/>',quote:'<path d="M5 18v-6h4V6M14 18v-6h4V6"/>',fork:'<path d="M7 4v16M7 9c0 6 10 1 10 7M17 4v5"/>',regen:'<path d="M20 12a8 8 0 10-3 6M20 5v7h-7"/>',mic:'<path d="M9 3h6v10H9zM5 11a7 7 0 0014 0M12 18v3"/>',live:'<path d="M2 12h4l2-7 4 14 3-10 2 3h5"/>',clip:'<path d="M17 9l-7 7a3 3 0 01-4-4l8-8a2 2 0 013 3l-8 8"/>',send:'<path d="M4 12L20 4l-6 16-3-7z"/>',stop:'<path d="M6 6h12v12H6z"/>',check:'<path d="M4 12l5 5L20 6"/>',chev:'<path d="M6 9l6 6 6-6"/>',img:'<path d="M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6"/>',cam:'<path d="M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 100-8 4 4 0 000 8z"/>',file:'<path d="M6 3h8l4 4v14H6zM14 3v4h4"/>',down:'<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>',link:'<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/>',undo:'<path d="M4 9h11a5 5 0 010 10H8M4 9l4-4M4 9l4 4"/>',bug:'<path d="M12 8a4 4 0 014 4v3a4 4 0 01-8 0v-3a4 4 0 014-4zM8 12H4M16 12h4M8 17l-3 2M16 17l3 2M9 6L7 4M15 6l2-2"/>'};
+const IC={chat:'<path d="M4 5h16v11H9l-5 4z"/>',folder:'<path d="M3 6h7l2 2h9v11H3z"/>',saint:'<path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z"/>',crown:'<path d="M3 18L2 7l6 5 4-8 4 8 6-5-1 11z"/>',plus:'<path d="M12 5v14M5 12h14"/>',menu:'<path d="M4 7h16M4 12h10M4 17h16"/>',trash:'<path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/>',move:'<path d="M3 6h7l2 2h9v11H3zM9 14h7m-3-3l3 3-3 3"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',edit:'<path d="M4 20l1-5L16 4l4 4L9 19z"/>',copy:'<path d="M8 8h12v12H8zM4 16V4h12"/>',quote:'<path d="M5 18v-6h4V6M14 18v-6h4V6"/>',fork:'<path d="M7 4v16M7 9c0 6 10 1 10 7M17 4v5"/>',regen:'<path d="M20 12a8 8 0 10-3 6M20 5v7h-7"/>',mic:'<path d="M9 3h6v10H9zM5 11a7 7 0 0014 0M12 18v3"/>',live:'<path d="M2 12h4l2-7 4 14 3-10 2 3h5"/>',clip:'<path d="M17 9l-7 7a3 3 0 01-4-4l8-8a2 2 0 013 3l-8 8"/>',send:'<path d="M4 12L20 4l-6 16-3-7z"/>',stop:'<path d="M6 6h12v12H6z"/>',check:'<path d="M4 12l5 5L20 6"/>',chev:'<path d="M6 9l6 6 6-6"/>',img:'<path d="M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6"/>',cam:'<path d="M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 100-8 4 4 0 000 8z"/>',file:'<path d="M6 3h8l4 4v14H6zM14 3v4h4"/>',down:'<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>',link:'<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/>',undo:'<path d="M4 9h11a5 5 0 010 10H8M4 9l4-4M4 9l4 4"/>',globe:'<path d="M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 100-6 3 3 0 000 6z"/>',save:'<path d="M5 4h12l2 2v14H5zM8 4v5h8V4M8 20v-6h8v6"/>',code:'<path d="M9 7l-5 5 5 5M15 7l5 5-5 5"/>',bug:'<path d="M12 8a4 4 0 014 4v3a4 4 0 01-8 0v-3a4 4 0 014-4zM8 12H4M16 12h4M8 17l-3 2M16 17l3 2M9 6L7 4M15 6l2-2"/>'};
 const ic=(n,s=18)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="miter" stroke-linecap="square">${IC[n]}</svg>`;
 /* ---------- data ---------- */
-const FAC0={epi:{n:'Epithumetikon',d:'Creative · stories, dialogue, imagery',temp:1.1,top:.95,ctx:4096,gpu:20,think:.4},thu:{n:'Thumos',d:'Balanced · fast everyday work',temp:.7,top:.9,ctx:4096,gpu:20,think:1},log:{n:'Logistikon',d:'Deep reasoning · logic, analysis',temp:.3,top:.8,ctx:8192,gpu:30,think:2.4}};
+const FAC0={epi:{n:'Epithumetikon',d:'Creative · stories, dialogue, imagery',temp:1.1,top:.95,topk:60,rep:1.05,ctx:4096,think:.4},thu:{n:'Thumos',d:'Balanced · fast everyday work',temp:.7,top:.9,topk:40,rep:1.1,ctx:4096,think:1},log:{n:'Logistikon',d:'Deep reasoning · logic, analysis',temp:.3,top:.8,topk:20,rep:1.1,ctx:8192,think:2.4}};
 const mk=(id,n,s,file,url)=>({id,n,q:'Q4_K_M',s,file,url:'https://huggingface.co/'+url,st:'none',p:0});
 let models=[mk('m1','Llama 3.2 3B Instruct','~2.0 GB','Llama-3.2-3B-Instruct-Q4_K_M.gguf','bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf'),mk('m2','Qwen2.5 3B Instruct','~2.1 GB','qwen2.5-3b-instruct-q4_k_m.gguf','Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf'),mk('m3','Gemma 2 2B Instruct','~1.7 GB','gemma-2-2b-it-Q4_K_M.gguf','bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf'),mk('m4','Phi 3.5 Mini Instruct','~2.4 GB','Phi-3.5-mini-instruct-Q4_K_M.gguf','bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_K_M.gguf')];
-let folders=[{id:'g',name:'General'},{id:'f1',name:'Palace Heist Notes',on:true},{id:'f2',name:'Code Sidekick',on:false}],uid=1;
-let chats=[{t:'New chat',f:'g',m:[]},{t:'Heist route ideas',f:'f1',m:[]},{t:'Refactor helper',f:'f2',m:[]}];
+let folders=[{id:'g',name:'General'}],uid=1;
+let chats=[{t:'New chat',f:'g',m:[]}];
 const rk=(n,d,p)=>({n,d,p,p0:p});
 let PR={aco:rk('Acolyte','Humble, eager helper','You are a humble, eager assistant.'),dea:rk('Deacon','Practical and dutiful','You are a dutiful, practical assistant.'),pri:rk('Priest','Warm counsel, clear guidance','You are a warm, guiding assistant.'),bis:rk('Bishop','Authoritative, measured','You are an authoritative, measured advisor.'),arc:rk('Archbishop','Strategic, far-sighted','You are a strategic, far-sighted advisor.'),car:rk('Cardinal','Supreme counsel, concise and exact','You are a concise, exacting supreme counsel.')};
-let FAC=J(FAC0),fac='thu',prof='pri',act=null,mem='',sty='Markdown',cfg={threads:0,maxTok:1024};
-const STY=[['Markdown','Standard formatted replies'],['Canvas','Artifacts / canvas view'],['Image','Image generation (needs diffusers)']];
+let FAC=J(FAC0),fac='thu',prof='pri',act=null,mem='',sty='Markdown',web='off',cfg={threads:0,maxTok:1024};
+const STY=[['Markdown','Standard formatted replies'],['Canvas','Documents, slides and web apps in their own tab'],['Image','Image generation (needs an image model)']];
 const K='cathedrai.v1';
-function save(){try{localStorage.setItem(K,JSON.stringify({folders,chats:chats.map(c=>({...c,m:c.m.map(x=>({r:x.r,t:x.t,s:x.s,err:x.err,a:(x.a||[]).map(a=>({name:a.name,size:a.size,text:a.text&&a.text.slice(0,30000)}))}))})),models:models.map(m=>({...m,st:m.st=='dl'?'none':m.st,p:0,ph:'',err:''})),FAC,fac,prof,act,PR,mem,uid,cfg}))}catch(e){}}
+function snap(keepImg){return JSON.stringify({folders,chats:chats.map(c=>({...c,m:c.m.map(x=>({r:x.r,t:x.t,s:x.s,err:x.err,src:x.src,cv:x.cv,a:(x.a||[]).map(a=>({name:a.name,size:a.size,kind:a.kind,note:a.note,img:keepImg?a.img:null,text:a.text&&a.text.slice(0,30000)}))}))})),models:models.map(m=>({...m,st:m.st=='dl'?'none':m.st,p:0,ph:'',err:'',pjb:0})),FAC,fac,prof,act,PR,mem,uid,cfg})}
+function save(){try{localStorage.setItem(K,snap(true))}catch(e){try{localStorage.setItem(K,snap(false))}catch(e2){}}}
 try{const d=JSON.parse(localStorage.getItem(K));if(d)({folders,chats,models,FAC,fac,prof,act,PR,mem,uid,cfg}=d)}catch(e){}
 if(!cfg)cfg={threads:0,maxTok:1024};
+for(const k in FAC0)FAC[k]={...FAC0[k],...(FAC[k]||{})};
+/* v0.3: drop the two sample projects (and their empty sample chats) that older versions created */
+{const demo=folders.filter(f=>(f.id=='f1'&&f.name=='Palace Heist Notes')||(f.id=='f2'&&f.name=='Code Sidekick')).map(f=>f.id);
+ chats=chats.filter(c=>!(demo.includes(c.f)&&!c.m.length));chats.forEach(c=>{if(demo.includes(c.f))c.f='g'});folders=folders.filter(f=>!demo.includes(f.id))}
+if(!folders.some(f=>f.id=='g'))folders.unshift({id:'g',name:'General'});
 if(!chats.length)chats=[{t:'New chat',f:'g',m:[]}];
 let C=chats[0],view='chat',busy=false,stop=false,pend=null,att=[];
 const tabs=[['chat','chat','Discussion'],['proj','folder','Projects'],['hub','saint','Appoint Your Saint'],['sov','crown','Hierarchy'],['diag','bug','Diagnostics']];
@@ -157,6 +189,7 @@ function savMenu(el){const r=models.filter(m=>m.st=='ready');menu(el,r.length?r.
 function facMenu(el){menu(el,Object.keys(FAC).map(k=>({l:FAC[k].n,s:FAC[k].d,on:k==fac,ic:'saint',fn:()=>{fac=k;nav();if(view=='hub')render();save()}})),true)}
 function styMenu(el){menu(el,STY.map(s=>({l:s[0],s:s[1],on:s[0]==sty,fn:()=>{sty=s[0];nav()}})),true)}
 function atMenu(el){menu(el,[{l:'Photos',s:'From your gallery',ic:'img',fn:()=>$('#fPhoto').click()},{l:'Camera',s:'Take a picture',ic:'cam',fn:()=>$('#fCam').click()},{l:'Files',s:'Documents, code, anything',ic:'file',fn:()=>$('#fFile').click()}],true)}
+function webMenu(el){menu(el,[{l:'Web: off',s:'Answer from the Saint alone',ic:'globe',on:web=='off',fn:()=>{web='off';nav()}},{l:'Web: blend',s:'One search, quick read of top pages',ic:'globe',on:web=='blend',fn:()=>{web='blend';nav()}},{l:'Web: intensive',s:'Several searches, deep read, structured analysis. Slower; wants a larger Context size',ic:'globe',on:web=='deep',fn:()=>{web='deep';nav()}}],true)}
 function rankMenu(el){menu(el,Object.keys(PR).map(k=>({l:PR[k].n,s:PR[k].d,on:k==prof,ic:'crown',fn:()=>{prof=k;render();save()}})))}
 /* ---------- BMO ---------- */
 const cv=$('#bmo'),cx=cv.getContext('2d'),slot=$('#slot');
@@ -164,6 +197,23 @@ const D={h:1,y:0,r:0,o:0,c:.5,mx:0,w:34,ci:0,red:0,tl:0,hl:1,sk:0,mode:'o'},S=o=
 const E={idle:S({}),think:S({c:-.15,mx:14,w:30,tl:1}),talk:S({o:.5,c:.4,w:30}),happy:S({mode:'a',y:-4,o:.35,c:1.1,w:42}),sad:S({h:.8,y:10,r:.25,c:-1,w:28}),angry:S({h:.65,y:-2,r:-.52,c:0,w:40,red:1}),confused:S({mx:18,w:0,ci:9,tl:1}),surprised:S({h:1.4,w:0,ci:14,y:-3}),sleepy:S({h:.3,y:6,o:.2,c:.1,w:18}),love:S({mode:'h',o:.3,c:1.1,w:40}),wink:S({hl:.08,o:.2,c:.9,w:40}),smug:S({h:.55,y:3,r:.12,c:.9,mx:12,w:36}),scared:S({h:1.25,c:-.7,w:26,sk:1}),excited:S({mode:'a',o:.8,c:1,w:44}),dizzy:S({mode:'x',c:-.2,w:28,sk:.6,o:.1})};
 let emo='idle',Q={...E.idle},blink=0,nextBlink=2,talking=false,lastT=0,tt,lastE='';
 const setEmo=e=>emo=e,L=(a,b,k)=>a+(b-a)*k;
+/* one-word mood flagged by the model -> BMO face. Costs the model ~3 tokens and the app one dictionary lookup. */
+const MOODS={happy:'happy',glad:'happy',joy:'happy',joyful:'happy',pleased:'happy',cheerful:'happy',grateful:'happy',proud:'happy',kind:'happy',thanks:'happy',positive:'happy',friendly:'happy',
+sad:'sad',unhappy:'sad',sorrow:'sad',grief:'sad',lonely:'sad',hurt:'sad',disappointed:'sad',depressed:'sad',upset:'sad',cry:'sad',
+mad:'angry',angry:'angry',anger:'angry',furious:'angry',annoyed:'angry',irritated:'angry',frustrated:'angry',rage:'angry',hostile:'angry',rude:'angry',
+confused:'confused',puzzled:'confused',unsure:'confused',curious:'confused',lost:'confused',unclear:'confused',doubt:'confused',
+surprised:'surprised',shocked:'surprised',amazed:'surprised',wow:'surprised',astonished:'surprised',
+sleepy:'sleepy',tired:'sleepy',bored:'sleepy',boring:'sleepy',exhausted:'sleepy',calm:'sleepy',
+love:'love',loving:'love',affection:'love',romantic:'love',adore:'love',crush:'love',sweet:'love',care:'love',
+wink:'wink',playful:'wink',joking:'wink',joke:'wink',funny:'wink',flirty:'wink',teasing:'wink',
+smug:'smug',proudful:'smug',confident:'smug',cocky:'smug',sarcastic:'smug',sly:'smug',
+scared:'scared',afraid:'scared',fear:'scared',anxious:'scared',nervous:'scared',worried:'scared',horror:'scared',panic:'scared',
+excited:'excited',thrilled:'excited',hype:'excited',eager:'excited',energetic:'excited',celebrate:'excited',
+dizzy:'dizzy',drunk:'dizzy',chaotic:'dizzy',overwhelmed:'dizzy',random:'dizzy',
+neutral:'idle',normal:'idle',serious:'idle',thinking:'think',focused:'think'};
+function moodOf(w){w=(w||'').toLowerCase().replace(/[^a-z]/g,'');if(!w)return null;if(MOODS[w])return MOODS[w];if(E[w])return w;for(const k in MOODS)if(w.length>3&&(k.startsWith(w)||w.startsWith(k)))return MOODS[k];return null}
+const MOOD_RX=[[/\b(hate|stupid|idiot|shut up|wtf|useless|damn|angry|furious)\b/i,'angry'],[/\b(thanks|thank you|awesome|great job|love it|nice|yay)\b/i,'happy'],[/\b(sad|lonely|miss (him|her|you)|depress|cry|hurt)\b/i,'sad'],[/\b(i love you|crush|date|kiss)\b/i,'love'],[/\b(scared|afraid|panic|anxious|worried)\b/i,'scared'],[/\b(lol|haha|joke|funny)\b/i,'wink'],[/\b(what\?|huh|confus|don'?t understand)\b/i,'confused'],[/!{2,}|\b(omg|wow|amazing)\b/i,'excited']];
+const guessMood=t=>{for(const [r,e] of MOOD_RX)if(r.test(t))return e;return null};
 function frame(t){t/=1000;const dt=Math.min(.05,t-lastT);lastT=t;const T=E[emo],f=1-Math.pow(.0005,dt);
 for(const k in T)if(typeof T[k]=='number')Q[k]=L(Q[k],T[k],f);Q.mode=T.mode;
 if(t>nextBlink){blink=.16;nextBlink=t+2.5+Math.random()*3}
@@ -214,7 +264,7 @@ function nav(){$('#nav').innerHTML=tabs.map(([k,i,n])=>`<button class="${view==k
 $('#hist').innerHTML=folders.filter(f=>f.id=='g'||f.on).map(f=>{const cs=chats.filter(c=>c.f==f.id);return`<div class="fh ${f.c?'c':''}" onclick="fold('${f.id}')"><span class="cv">${ic('chev',14)}</span>${ic('folder',14)}<span>${esc(f.name)}</span><em>${cs.length}</em><button onclick="event.stopPropagation();newChat('${f.id}')" title="New discussion here">${ic('plus',14)}</button></div>`+(f.c?'':cs.map(c=>`<div class="ci ${c==C&&view=='chat'?'on':''}" onclick="openChat(${chats.indexOf(c)})"><span>${esc(c.t)}</span><button onclick="event.stopPropagation();mv(${chats.indexOf(c)})">${ic('move',14)}</button><button onclick="event.stopPropagation();delChat(${chats.indexOf(c)})">${ic('trash',14)}</button></div>`).join(''))}).join('');
 const am=models.find(m=>m.id==act&&m.st=='ready');
 $('#sel').innerHTML=`${ic('saint',16)}<span>${am?esc(am.n):'Select Your Saint'}</span>${ic('chev',14)}`;
-$('#fb').innerHTML=`<span>${FAC[fac].n}</span>${ic('chev',14)}`;$('#sty').innerHTML=`<span>${sty}</span>${ic('chev',14)}`;save()}
+$('#fb').innerHTML=`<span>${FAC[fac].n}</span>${ic('chev',14)}`;$('#web').innerHTML=ic('globe',20)+(web=='off'?'':`<i class="${web=='deep'?'d':''}"></i>`);$('#web').title='Web search: '+web;$('#sty').innerHTML=`<span>${sty}</span>${ic('chev',14)}`;save()}
 function fold(id){const f=folders.find(x=>x.id==id);f.c=!f.c;nav()}
 function go(v){view=v;nav();render();if(v=='diag')diagLoad();if(innerWidth<720)$('#side').classList.add('min')}
 function openChat(i){C=chats[i];go('chat')}
@@ -235,9 +285,10 @@ const fmtB=b=>b>=1e9?(b/1e9).toFixed(2)+' GB':b>=1e6?(b/1e6).toFixed(0)+' MB':b>
 const ptxt=m=>(m.ph||'')+(m.bt?' · '+fmtB(m.bt)+(m.tt>0?' / '+fmtB(m.tt):''):'')+(m.bps?' · '+fmtB(m.bps)+'/s':'');
 const prog=m=>{const p=$('#p'+m.id),t=$('#t'+m.id);if(p)p.style.width=m.p+'%';if(t)t.textContent=Math.round(m.p)+'% · '+ptxt(m)};
 const metaTxt=x=>[x.arch,x.quant,x.ctx?'native ctx '+x.ctx:'',x.layers?x.layers+' layers':''].filter(Boolean).join(' · ');
-try{CA()&&CA().addListener('progress',e=>{const m=models.find(x=>x.id==e.id);if(!m)return;m.ph=e.phase=='copy'?'Copying into the app':e.phase=='download'?'Downloading':'Checking the model file';m.bt=e.bytes;m.tt=e.total;m.bps=e.bps;m.p=e.total>0?e.bytes/e.total*100:0;prog(m)})}catch(e){}
+try{CA()&&CA().addListener('progress',e=>{const m=models.find(x=>x.id==e.id);if(!m)return;if(m.pjb){const t=$('#pj'+m.id);if(t)t.textContent='Copying vision file… '+(e.total>0?Math.round(e.bytes/e.total*100)+'%':fmtB(e.bytes));return}m.ph=e.phase=='copy'?'Copying into the app':e.phase=='download'?'Downloading':'Checking the model file';m.bt=e.bytes;m.tt=e.total;m.bps=e.bps;m.p=e.total>0?e.bytes/e.total*100:0;prog(m)})}catch(e){}
 function ready(m){m.st='ready';m.p=100;m.err='';if(!models.find(x=>x.id==act&&x.st=='ready'))act=m.id;nav();if(view=='hub')render();toast(m.n+' is ready');save()}
 function modelDone(m,r){m.path=r.path;m.file=r.file;m.size=r.size;m.meta=r.meta;m.part=0;if(r.meta&&r.meta.quant)m.q=r.meta.quant;m.s=fmtB(r.size);dlog('model','ready '+m.file+' '+JSON.stringify(r.meta||{}));ready(m)}
+const isProj=f=>/mmproj/i.test(f.file||'')||(f.meta&&f.meta.arch=='clip');
 function failM(m,what,e){const msg=(e&&e.message)||String(e);dlog('model',what+' failed: '+msg);
  if(m.custom&&!m.path)models=models.filter(x=>x!=m);else{m.st='none';m.p=0}
  if(/cancel/i.test(msg)){nav();if(view=='hub')render();return toast(what+' cancelled')}
@@ -258,25 +309,33 @@ const cancelX=()=>{CA()&&CA().cancelTransfer();toast('Cancelling…')};
 async function rm(id){const m=models.find(x=>x.id==id);if(CA()&&m.file){try{if(loaded&&loaded.path==m.path){await CA().unloadModel();loaded=null}await CA().deleteModel({file:m.file})}catch(e){}}
 if(m.custom)models=models.filter(x=>x!=m);else{m.st='none';m.p=0;m.meta=null;m.path=''}
 if(act==id)act=(models.find(x=>x.st=='ready')||{}).id||null;nav();render()}
-async function reconcile(){const c=CA();if(!c)return;try{const r=await c.listModels(),by={};r.models.forEach(f=>{if(!f.partial)by[f.file]=f});let ch=false;
- for(const m of models){const f=m.file&&by[m.file];if(m.st=='ready'&&!f){m.st='none';m.p=0;m.path='';m.meta=null;if(act==m.id)act=null;ch=true;dlog('reconcile','missing on disk: '+m.file)}
+let projFiles=[];
+async function reconcile(){const c=CA();if(!c)return;try{const r=await c.listModels(),by={};r.models.forEach(f=>{if(!f.partial)by[f.file]=f});let ch=false;projFiles=r.models.filter(f=>!f.partial&&!f.bad&&isProj(f));
+ for(const m of models)if(m.proj){const f=by[m.proj];if(!f){m.proj='';m.projPath='';ch=true}else m.projPath=f.path}
+ for(const m of models){const f=m.file&&by[m.file];if(m.file&&f&&isProj(f)){models=models.filter(x=>x!=m);ch=true;continue}if(m.st=='ready'&&!f){m.st='none';m.p=0;m.path='';m.meta=null;if(act==m.id)act=null;ch=true;dlog('reconcile','missing on disk: '+m.file)}
   else if(f&&!f.bad&&m.st!='ready'&&m.st!='dl'){m.st='ready';m.path=f.path;m.size=f.size;m.s=fmtB(f.size);m.meta=f.meta;if(f.meta&&f.meta.quant)m.q=f.meta.quant;ch=true;dlog('reconcile','recovered '+m.file)}
   else if(f&&m.st=='ready'){m.path=f.path;m.meta=f.meta}}
  for(const f of r.models){if(f.partial){const m=models.find(x=>x.file==f.file);if(m&&m.st=='none')m.part=f.size;continue}
   if(f.bad){dlog('reconcile','unreadable '+f.file+': '+f.bad);continue}
-  if(!models.some(m=>m.file==f.file)){const m=addCustom(f.file,f.size);m.st='ready';m.path=f.path;m.meta=f.meta;if(f.meta&&f.meta.quant)m.q=f.meta.quant;ch=true;dlog('reconcile','found '+f.file)}}
+  if(isProj(f))continue;if(!models.some(m=>m.file==f.file)){const m=addCustom(f.file,f.size);m.st='ready';m.path=f.path;m.meta=f.meta;if(f.meta&&f.meta.quant)m.q=f.meta.quant;ch=true;dlog('reconcile','found '+f.file)}}
  if(!models.find(x=>x.id==act&&x.st=='ready')){const r0=models.find(x=>x.st=='ready');act=r0?r0.id:null}
  nav();if(view=='hub')render();if(ch)save()}catch(e){dlog('reconcile','failed '+(e.message||e))}}
 const sl=(k,mn,mx,st,lb)=>`<label>${lb}: <b id="v_${k}">${FAC[fac][k]}</b></label><input type="range" min="${mn}" max="${mx}" step="${st}" value="${FAC[fac][k]}" oninput="FAC['${fac}'].${k}=+this.value;document.getElementById('v_${k}').textContent=this.value;save()">`;
 function revF(){FAC[fac]=J(FAC0[fac]);render();save();toast(FAC[fac].n+' reverted')}
+async function addProj(id){const m=models.find(x=>x.id==id),c=CA();if(!m||!c)return toast('Needs the Android app');
+ let f;try{f=await c.pickModel()}catch(e){return toast('File picker failed: '+(e.message||e))}if(!f||f.cancelled)return;
+ if(!/\.gguf$/i.test(f.name))return toast('Pick the .gguf vision file (its name usually contains "mmproj")');
+ m.pjb=1;render();try{const r=await c.importModel({id:m.id,uri:f.uri,name:f.name});m.proj=r.file;m.projPath=r.path;loaded=null;toast('Vision file added')}catch(e){toast('Import failed: '+(e.message||e))}m.pjb=0;nav();render();save()}
+async function rmProj(id){const m=models.find(x=>x.id==id);if(!m)return;const f=m.proj;m.proj='';m.projPath='';loaded=null;if(CA()&&f&&!models.some(x=>x.proj==f)){try{await CA().deleteModel({file:f})}catch(e){}}render();save()}
+const visionRow=m=>m.pjb?`<p class="hint" id="pj${m.id}">Copying vision file…</p>`:m.proj?`<p class="hint ok">${ic('eye',14)} Can see images · ${esc(m.proj)}</p><button class="btn g" onclick="rmProj('${m.id}')">Remove vision file</button>`:`<p class="hint">Text only. To let this Saint look at pictures, add its matching vision file (the <b>mmproj</b> .gguf from the same model page).</p><button class="btn g" onclick="addProj('${m.id}')">${ic('eye',16)}Add image support</button>`;
 const mcard=m=>`<div class="card"><h4>${ic('saint')}${esc(m.n)}<small>${esc(m.q)} · ${esc(m.s)}</small></h4>`+(m.meta?`<small>${esc(metaTxt(m.meta))}</small>`:'')+(m.err?`<p class="er">${esc(m.err)}</p>`:'')+(m.part&&m.st=='none'?`<small>Partial download kept (${fmtB(m.part)}). Download resumes it.</small><br>`:'')+
-(m.st=='ready'?`<button class="btn" onclick="act='${m.id}';nav();render()" ${m.id==act?'disabled':''}>${m.id==act?'Appointed':'Appoint'}</button><button class="btn g" onclick="rm('${m.id}')">Remove</button>`:m.st=='dl'?`<div class="pr"><div id="p${m.id}" style="width:${m.p}%"></div></div><small id="t${m.id}">${Math.round(m.p)}% · ${esc(ptxt(m))}</small><br><button class="btn g" onclick="cancelX()">Cancel</button>`:`<button class="btn" onclick="dl('${m.id}')">${ic('down',16)}${m.part?'Resume':'Download'}</button>${m.custom?`<button class="btn g" onclick="rm('${m.id}')">Remove</button>`:''}`)+`</div>`;
+(m.st=='ready'?`<button class="btn" onclick="act='${m.id}';nav();render()" ${m.id==act?'disabled':''}>${m.id==act?'Appointed':'Appoint'}</button><button class="btn g" onclick="rm('${m.id}')">Remove</button>${visionRow(m)}`:m.st=='dl'?`<div class="pr"><div id="p${m.id}" style="width:${m.p}%"></div></div><small id="t${m.id}">${Math.round(m.p)}% · ${esc(ptxt(m))}</small><br><button class="btn g" onclick="cancelX()">Cancel</button>`:`<button class="btn" onclick="dl('${m.id}')">${ic('down',16)}${m.part?'Resume':'Download'}</button>${m.custom?`<button class="btn g" onclick="rm('${m.id}')">Remove</button>`:''}`)+`</div>`;
 function hubView(){const dirty=JSON.stringify(FAC[fac])!=JSON.stringify(FAC0[fac]);
 return`<div class="wrap"><h1 class="t">Appoint Your Saint</h1><p>Models live in the app's private storage. Imports are streamed straight in, checked, and described automatically.</p>`+models.map(mcard).join('')+
-`<div class="card"><h4>${ic('plus')}Add your own</h4><p style="color:var(--mut);margin-top:4px">Pick a single-file .gguf from your phone. It is copied in with a progress bar and validated.</p><button class="btn" onclick="importModel()">${ic('file',16)}Import from storage</button><button class="btn g" onclick="linkDlg()">${ic('link',16)}From link</button></div>
-<div class="card"><h4>${ic('crown')}Hardware tuning · Faculties</h4><div class="chips" style="justify-content:flex-start">${Object.keys(FAC).map(k=>`<button class="chip ${k==fac?'on':''}" onclick="fac='${k}';nav();render()">${FAC[k].n}</button>`).join('')}</div><p style="color:var(--mut);margin-top:8px">${FAC[fac].d}</p>${sl('temp',0,2,.05,'Temperature')}${sl('top',0,1,.05,'Top-p')}${sl('ctx',512,32768,512,'Context size')}${sl('gpu',0,80,1,'GPU layers (ignored: CPU engine)')}${sl('think',.2,4,.1,'Thinking depth (x, not used yet)')}<button class="btn g" onclick="revF()" ${dirty?'':'disabled'}>${ic('undo',16)}Revert to default</button>
+`<div class="card"><h4>${ic('plus')}Add your own</h4><p style="color:var(--mut);margin-top:4px">Pick a single-file .gguf from your phone. It is copied in with a progress bar and validated. For image input, add the model's <b>mmproj</b> file afterwards from its card.</p><button class="btn" onclick="importModel()">${ic('file',16)}Import from storage</button><button class="btn g" onclick="linkDlg()">${ic('link',16)}From link</button></div>
+<div class="card"><h4>${ic('crown')}Hardware tuning · Faculties</h4><div class="chips" style="justify-content:flex-start">${Object.keys(FAC).map(k=>`<button class="chip ${k==fac?'on':''}" onclick="fac='${k}';nav();render()">${FAC[k].n}</button>`).join('')}</div><p style="color:var(--mut);margin-top:8px">${FAC[fac].d}</p>${sl('temp',0,2,.05,'Temperature (randomness)')}${sl('top',0,1,.05,'Top-p')}${sl('topk',0,100,1,'Top-k (0 = off)')}${sl('rep',1,1.5,.05,'Repeat penalty (1 = off)')}${sl('ctx',512,32768,512,'Context size (memory it can see; reloads the model)')}${sl('think',.2,4,.1,'Reasoning depth')}<p class="hint">Reasoning depth: below 0.6 asks for short direct answers, above 2 asks the Saint to work step by step first. It costs more tokens, so raise Max reply length with it.</p><button class="btn g" onclick="revF()" ${dirty?'':'disabled'}>${ic('undo',16)}Revert to default</button>
 <label>CPU threads: <b id="v_thr">${cfg.threads||'auto'}</b></label><input type="range" min="0" max="8" step="1" value="${cfg.threads}" oninput="cfg.threads=+this.value;document.getElementById('v_thr').textContent=this.value||'auto';save()">
-<label>Max reply length (tokens): <b id="v_mt">${cfg.maxTok}</b></label><input type="range" min="128" max="4096" step="128" value="${cfg.maxTok}" oninput="cfg.maxTok=+this.value;document.getElementById('v_mt').textContent=this.value;save()"></div></div>`}
+<label>Max reply length (tokens): <b id="v_mt">${cfg.maxTok}</b></label><input type="range" min="128" max="4096" step="128" value="${cfg.maxTok}" oninput="cfg.maxTok=+this.value;document.getElementById('v_mt').textContent=this.value;save()"><p class="hint">This engine runs on the CPU, so there is no GPU setting. Every value above is applied on the next message, and shown under each reply.</p></div></div>`}
 /* ---------- diagnostics ---------- */
 let DG=null,TST=[],tbusy=false;
 async function diagLoad(){const c=CA();if(!c){DG={preview:true}}else{try{DG=await c.getDiagnostics()}catch(e){DG={error:String(e.message||e)}}}if(view=='diag')dgPaint()}
@@ -318,13 +377,118 @@ h+=`<div class="card"><h4>Engine</h4>${kv('Library',e.loaded?'loaded':'FAILED: '
 <div class="card"><h4>Previous runs</h4>${d.incidents?`<div class="lg">${esc(d.incidents)}</div>`:'<small class="ok">No crashes or interrupted operations recorded.</small>'}<small>How Android says earlier runs ended:</small><div class="lg">${esc((d.exits||[]).join('\n'))}</div></div>
 <details open><summary>Engine log</summary><div class="lg">${esc(d.nativeLog||'(empty)')}</div></details><details><summary>App log</summary><div class="lg">${esc(d.appLog||'(empty)')}</div></details><details><summary>UI log</summary><div class="lg">${esc(JL.slice(-60).join('\n')||'(empty)')}</div></details></div>`;return h}
 async function startup(){const c=CA();if(!c)return;await reconcile();try{const n=await c.getStartupNotice();if(n&&n.op){dlg(`<h4>Last time ended unexpectedly</h4><p>CathedrAI was closed by Android while it was doing:</p><p style="margin:8px 0;user-select:text;word-break:break-word">${esc(n.op)}</p><p style="font-size:12px">${esc(n.exit||'')}</p><p style="margin-top:8px;font-size:12px">The details were saved in Diagnostics.</p><div class="ac"><button class="btn g" onclick="cl()">Dismiss</button><button class="btn" onclick="cl();go('diag')">Open Diagnostics</button></div>`)}}catch(e){}}
+/* ---------- reading files (offline, except PDF which loads pdf.js once from a CDN) ---------- */
+const TXT_RX=/\.(txt|md|markdown|json|jsonl|csv|tsv|js|mjs|ts|jsx|tsx|py|java|kt|c|h|cpp|hpp|cs|go|rs|rb|php|html?|css|xml|ya?ml|toml|ini|cfg|conf|sh|bat|sql|log|tex|swift|lua|r|svg|srt|vtt|env|gradle|properties)$/i;
+const unent=t=>t.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(+n)).replace(/&#x([0-9a-f]+);/gi,(_,n)=>String.fromCodePoint(parseInt(n,16))).replace(/&amp;/g,'&');
+const tidy=t=>t.replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+async function inflateRaw(d){const st=new Blob([d]).stream().pipeThrough(new DecompressionStream('deflate-raw'));return new Uint8Array(await new Response(st).arrayBuffer())}
+async function unzip(buf){const dv=new DataView(buf),u8=new Uint8Array(buf);let e=u8.length-22;while(e>=0&&dv.getUint32(e,true)!=0x06054b50)e--;if(e<0)throw new Error('not a valid zip-based file');
+ const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);const files={};
+ for(let i=0;i<n;i++){if(dv.getUint32(p,true)!=0x02014b50)break;const meth=dv.getUint16(p+10,true),csz=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),xl=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),off=dv.getUint32(p+42,true),name=new TextDecoder().decode(u8.subarray(p+46,p+46+nl));p+=46+nl+xl+cl;
+  files[name]=async()=>{const l=dv.getUint16(off+26,true)+dv.getUint16(off+28,true),d=u8.subarray(off+30+l,off+30+l+csz);return new TextDecoder().decode(meth==0?d:await inflateRaw(d))}}
+ return files}
+const natural=(a,b)=>(+(a.match(/(\d+)\.\w+$/)||[0,0])[1])-(+(b.match(/(\d+)\.\w+$/)||[0,0])[1]);
+async function readZipDoc(f,ext){const z=await unzip(await f.arrayBuffer()),names=Object.keys(z);let out=[];
+ if(ext=='docx'){const x=await z['word/document.xml']();return tidy(unent(x.replace(/<w:tab\/>/g,'\t').replace(/<w:br[^>]*\/>/g,'\n').replace(/<\/w:p>/g,'\n').replace(/<[^>]+>/g,'')))}
+ if(ext=='pptx'){let k=0;for(const n of names.filter(n=>/^ppt\/slides\/slide\d+\.xml$/.test(n)).sort(natural)){k++;const x=await z[n]();out.push('--- Slide '+k+' ---\n'+tidy(unent(x.replace(/<\/a:p>/g,'\n').replace(/<[^>]+>/g,''))))}
+  for(const n of names.filter(n=>/^ppt\/notesSlides\/notesSlide\d+\.xml$/.test(n)).sort(natural)){const t=tidy(unent((await z[n]()).replace(/<\/a:p>/g,'\n').replace(/<[^>]+>/g,'')));if(t.replace(/\d+/g,'').trim())out.push('[notes] '+t)}return out.join('\n\n')}
+ if(ext=='xlsx'){const ss=z['xl/sharedStrings.xml']?[...(await z['xl/sharedStrings.xml']()).matchAll(/<si>([\s\S]*?)<\/si>/g)].map(m=>unent(m[1].replace(/<[^>]+>/g,''))):[];let k=0;
+  for(const n of names.filter(n=>/^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort(natural)){k++;const rows=[...(await z[n]()).matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)].map(r=>[...r[1].matchAll(/<c ([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)].map(c=>{const t=(c[1].match(/t="(\w+)"/)||[])[1],v=((c[2]||'').match(/<v>([\s\S]*?)<\/v>/)||[])[1],is=((c[2]||'').match(/<is>([\s\S]*?)<\/is>/)||[])[1];return t=='s'?(ss[+v]||''):is?unent(is.replace(/<[^>]+>/g,'')):(v||'')}).join(' | '));out.push('--- Sheet '+k+' ---\n'+rows.join('\n'))}return out.join('\n\n')}
+ if(['odt','odp','ods'].includes(ext)){const x=await z['content.xml']();return tidy(unent(x.replace(/<\/text:(p|h)>/g,'\n').replace(/<\/table:table-row>/g,'\n').replace(/<\/table:table-cell>/g,' | ').replace(/<text:tab\/>/g,'\t').replace(/<[^>]+>/g,'')))}
+ if(ext=='epub'){for(const n of names.filter(n=>/\.(xhtml|html|htm)$/i.test(n)).sort()){out.push(tidy(unent((await z[n]()).replace(/<(script|style)[\s\S]*?<\/\1>/g,'').replace(/<\/(p|div|h\d|li)>/g,'\n').replace(/<[^>]+>/g,''))))}return out.join('\n\n')}
+ return ''}
+let pdfjs=null;
+async function loadPdfJs(){if(pdfjs)return pdfjs;await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';s.onload=ok;s.onerror=()=>no(new Error('PDF reader could not be downloaded (no internet?). Connect once and try again.'));document.head.appendChild(s)});pdfjs=window.pdfjsLib;pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';return pdfjs}
+async function readPdf(f){const lib=await loadPdfJs(),doc=await lib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise,out=[];
+ for(let i=1;i<=Math.min(doc.numPages,200);i++){const pg=await doc.getPage(i),tc=await pg.getTextContent();let line='',y=null;for(const it of tc.items){const yy=it.transform?it.transform[5]:0;if(y!=null&&Math.abs(yy-y)>3)line+='\n';line+=it.str+(it.hasEOL?'\n':' ');y=yy}out.push('--- Page '+i+' ---\n'+tidy(line))}
+ const t=out.join('\n\n');if(t.replace(/--- Page \d+ ---|\s/g,'').length<20)throw new Error('This PDF has no selectable text (scanned?). Photograph a page and attach it as an image instead.');return t+(doc.numPages>200?'\n[only the first 200 pages were read]':'')}
+function shrink(f,maxSide,q){return new Promise((ok,no)=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const k=Math.min(1,maxSide/Math.max(im.width,im.height)),w=Math.max(1,Math.round(im.width*k)),h=Math.max(1,Math.round(im.height*k)),c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(im,0,0,w,h);URL.revokeObjectURL(u);ok({c,w,h,url:c.toDataURL('image/jpeg',q)})};im.onerror=()=>{URL.revokeObjectURL(u);no(new Error('could not decode this image'))};im.src=u})}
+function rgbOf(c,w,h){const d=c.getContext('2d').getImageData(0,0,w,h).data,o=new Uint8Array(w*h*3);for(let i=0,j=0;i<d.length;i+=4){o[j++]=d[i];o[j++]=d[i+1];o[j++]=d[i+2]}let s='';for(let i=0;i<o.length;i+=32768)s+=String.fromCharCode.apply(null,o.subarray(i,i+32768));return btoa(s)}
+async function readAtt(f){const ext=(f.name.split('.').pop()||'').toLowerCase(),o={name:f.name,size:f.size,kind:'file'};
+ try{
+  if(f.type.startsWith('image/')||/^(png|jpe?g|webp|gif|bmp)$/.test(ext)){o.kind='image';const a=await shrink(f,640,.72);o.img=a.url;const b=await shrink(f,768,.9);o.rgb={w:b.w,h:b.h,b64:rgbOf(b.c,b.w,b.h)};o.note='image'}
+  else if(f.size>60e6)o.note='too large (60 MB max)';
+  else if(ext=='pdf'){o.kind='doc';o.text=await readPdf(f);o.note='read'}
+  else if(['docx','pptx','xlsx','odt','odp','ods','epub'].includes(ext)){o.kind='doc';o.text=await readZipDoc(f,ext);if(!o.text)throw new Error('no text found');o.note='read'}
+  else if(ext=='rtf'){o.kind='doc';o.text=tidy(unent((await f.text()).replace(/\\par[d]?/g,'\n').replace(/\\'([0-9a-f]{2})/gi,(_,h)=>String.fromCharCode(parseInt(h,16))).replace(/\\[a-z]+-?\d* ?/gi,'').replace(/[{}]/g,'')));o.note='read'}
+  else if(['doc','ppt','xls'].includes(ext))o.note='old binary Office format: save it as .docx/.pptx/.xlsx first'
+  else if(/^text\//.test(f.type)||TXT_RX.test(f.name)){if(f.size>3e6)throw new Error('text file over 3 MB');const t=await f.text();if(/\u0000/.test(t.slice(0,2000)))throw new Error('binary file');o.text=ext=='html'||ext=='htm'?tidy(unent(t.replace(/<(script|style)[\s\S]*?<\/\1>/gi,'').replace(/<\/(p|div|h\d|li|tr)>/gi,'\n').replace(/<[^>]+>/g,''))):t;o.note='read'}
+  else o.note='this type cannot be read yet'
+ }catch(e){o.text=null;o.note=(e&&e.message)||'could not read'}
+ return o}
+const attOk=a=>a.kind=='image'?!!a.img:a.text!=null;
+const attH=(a,i)=>(a||[]).map((x,k)=>x.img?`<img class="ai" src="${x.img}" onclick="viewAtt(${i},${k})">`:`<span class="ach" onclick="viewAtt(${i},${k})">${ic('file',14)}${esc(x.name)}</span>`).join('');
+function viewAtt(i,k){const a=i=='p'?att[k]:C.m[i].a[k];if(!a)return;$('#vwt').textContent=a.name;
+ $('#vwb').innerHTML=a.img?`<img src="${a.img}">`:a.text!=null?`<pre class="t">${esc(a.text.slice(0,60000))}${a.text.length>60000?'\n\n[… '+(a.text.length-60000)+' more characters not shown]':''}</pre>`:`<pre class="t">${esc(a.name)}\n\n${esc(a.note||'No preview available.')}</pre>`;$('#vw').style.display='flex'}
+const vwClose=()=>$('#vw').style.display='none';
+/* ---------- web search ---------- */
+const stripHtml=h=>{const d=new DOMParser().parseFromString(h,'text/html');d.querySelectorAll('script,style,nav,footer,header,aside,form,noscript,svg,iframe,[role=navigation],[aria-hidden=true]').forEach(n=>n.remove());const r=d.querySelector('article')||d.querySelector('main')||d.body;return tidy((r?r.innerText||r.textContent:'').replace(/\s*\n\s*/g,'\n').replace(/[ \t]{2,}/g,' '))};
+async function httpGet(u,max){const r=await CA().httpGet({url:u,maxBytes:max||900000});if(!r.ok)throw new Error(r.error||'request failed');return r.body}
+async function searchOnce(q){let res=[];
+ try{const h=await httpGet('https://html.duckduckgo.com/html/?q='+encodeURIComponent(q)),d=new DOMParser().parseFromString(h,'text/html');
+  d.querySelectorAll('.result').forEach(r=>{if(r.classList.contains('result--ad'))return;const a=r.querySelector('a.result__a');if(!a)return;let u=a.getAttribute('href')||'';const m=u.match(/uddg=([^&]+)/);if(m)u=decodeURIComponent(m[1]);if(u.startsWith('//'))u='https:'+u;if(/^https?:/.test(u)&&!/duckduckgo\.com\/y\.js/.test(u))res.push({title:a.textContent.trim(),url:u,snip:((r.querySelector('.result__snippet')||{}).textContent||'').trim()})})}catch(e){dlog('web','ddg failed: '+e.message)}
+ if(res.length<3){try{const h=await httpGet('https://www.bing.com/search?q='+encodeURIComponent(q)+'&setlang=en'),d=new DOMParser().parseFromString(h,'text/html');
+  d.querySelectorAll('li.b_algo').forEach(r=>{const a=r.querySelector('h2 a');if(!a)return;const u=a.getAttribute('href')||'';if(/^https?:/.test(u)&&!/bing\.com\/(aclick|ck\/a)/.test(u)&&!res.some(x=>x.url==u))res.push({title:a.textContent.trim(),url:u,snip:((r.querySelector('.b_caption p,.b_lineclamp2,.b_lineclamp3')||{}).textContent||'').trim()})})}catch(e){dlog('web','bing failed: '+e.message)}}
+ return res}
+async function webResearch(q,mode,F,say){const deep=mode=='deep',budget=Math.floor(F.ctx*(deep?2.4:1.6)),t0=Date.now();
+ const qs=[q];if(deep){const k=q.replace(/[^\p{L}\p{N} ]/gu,' ').split(/\s+/).filter(w=>w.length>3).slice(0,6).join(' ');if(k&&k!=q)qs.push(k);qs.push(q+' '+new Date().getFullYear()+' latest')}
+ let res=[];for(let i=0;i<qs.length;i++){say(`Searching the web${deep?` (${i+1}/${qs.length})`:''}…`);for(const r of await searchOnce(qs[i]))if(!res.some(x=>x.url==r.url))res.push(r)}
+ if(!res.length)throw new Error('The search returned nothing. Check the internet connection.');
+ const pick=res.slice(0,deep?6:2),per=Math.floor(budget*(deep?.8:.45)/pick.length);let pages=[],n=0;
+ await Promise.all(pick.map(async(r,i)=>{try{const h=await httpGet(r.url,700000);const t=stripHtml(h);if(t.length>200){r.page=t.slice(0,per);n++;say(`Reading pages… ${n}/${pick.length}`)}}catch(e){dlog('web','page failed '+r.url+': '+e.message)}}));
+ const snips=res.slice(0,deep?10:6),sb=Math.floor(budget*.2/snips.length);let cx='';
+ snips.forEach((r,i)=>{cx+=`[${i+1}] ${r.title}\n${r.url}\n${(r.snip||'').slice(0,sb)}\n`+(r.page?`Page text: ${r.page}\n`:'')+'\n'});
+ dlog('web',`${mode} q="${q}" results=${res.length} pages=${n} ctxChars=${cx.length} ${Date.now()-t0}ms`);
+ return{mode,q,cx:cx.slice(0,budget),src:snips.map(r=>({title:r.title,url:r.url}))}}
+function webPrompt(w){const d=new Date().toDateString();return `\n\n[Web results fetched ${d} for "${w.q}"]\n${w.cx}\n[End of web results]\n`+(w.mode=='deep'?'Write an in-depth analysis from these results: a short overview, then sections for the main findings, disagreements or uncertainties between sources, and a conclusion. Cite sources as [1], [2] after the claims they support. Do not invent facts that are not in the results.':'Answer using these results. Cite sources as [1], [2] after the claims they support. If the results do not contain the answer, say so.')}
+const openUrl=u=>{try{CA().openUrl({url:u})}catch(e){window.open(u,'_blank')}};
+/* ---------- canvas: documents, slides, web apps ---------- */
+const CV_RULES=`CANVAS MODE. The person wants the result built in a separate canvas tab, not pasted in the chat. Write one short sentence, then exactly one fenced block, and nothing after it.
+- Letters, essays, reports, notes, stories: a block starting with \`\`\`canvas-doc containing the whole text as Markdown.
+- Presentations: a block starting with \`\`\`canvas-slides containing Markdown. Each slide starts with "# Title" followed by short bullet lines. Separate slides with a line holding only ---. Use 5 to 10 slides.
+- Apps, games, tools, calculators, web pages, visual designs: a block starting with \`\`\`html containing ONE complete self-contained HTML file with inline CSS and JavaScript (no external files).`;
+function cvParse(t){const m=t.match(/```(canvas-doc|canvas-slides|canvas-html|html|svg)[^\n]*\n/);if(!m)return null;const a=m.index+m[0].length,e=t.indexOf('```',a),kind=m[1]=='canvas-doc'?'doc':m[1]=='canvas-slides'?'slides':'html';
+ let src=(e<0?t.slice(a):t.slice(a,e)).trim();if(m[1]=='svg')src=`<!doctype html><meta name=viewport content="width=device-width,initial-scale=1"><body style="margin:0;display:grid;place-items:center;min-height:100vh;background:#fff">${src}`;
+ return{pre:t.slice(0,m.index).trim(),kind,src,done:e>=0,post:e<0?'':t.slice(e+3).trim()}}
+const CVN={doc:['Document','file'],slides:['Slides','img'],html:['Web app','code']};
+function cvCard(m,i){const c=m.cv,t=cvTitle(c);return `<button class="cvcard" onclick="cvOpen(${i})">${ic(CVN[c.kind][1],22)}<span><b>${esc(t)}</b><small>${CVN[c.kind][0]} · tap to open, edit and save</small></span></button>`}
+function cvTitle(c){const s=c.src||'';if(c.kind=='html'){const t=s.match(/<title>([^<]*)<\/title>/i);return t&&t[1].trim()||'Web app'}const h=s.match(/^#{1,3}\s+(.+)$/m);return h?h[1].replace(/[*`]/g,'').slice(0,50):CVN[c.kind][0]}
+let cvI=-1,cvTab='view',cvSl=0;
+function cvOpen(i){const m=C.m[i];if(!m||!m.cv)return;cvI=i;cvTab=m.cv.kind=='html'?'view':'view';cvSl=0;$('#cvp').style.display='flex';cvDraw()}
+function cvClose(){$('#cvp').style.display='none';cvI=-1;const f=$('#cvb iframe');if(f)f.srcdoc='';$('#cvb').innerHTML='';save();if(view=='chat')render()}
+function pageDoc(src){return /<html|<!doctype/i.test(src)?src:`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>${src}</body></html>`}
+function slidesOf(c){if(!c.slides)c.slides=c.src.split(/\n[ \t]*-{3,}[ \t]*\n/).map(x=>x.trim()).filter(Boolean).map(x=>md(x));if(!c.slides.length)c.slides=['<h3>(empty)</h3>'];return c.slides}
+function cvDraw(){const c=C.m[cvI].cv,B=$('#cvb');$('#cvt').textContent=cvTitle(c);$('#cvx').innerHTML=ic('x',20);$('#cvsv').innerHTML=ic('save',20);
+ if(c.kind=='html'){$('#cvtabs').innerHTML=`<button class="${cvTab=='view'?'on':''}" onclick="cvTab='view';cvDraw()">Preview</button><button class="${cvTab=='code'?'on':''}" onclick="cvTab='code';cvDraw()">Code</button>`;
+  if(cvTab=='view'){B.innerHTML='<iframe sandbox="allow-scripts allow-forms allow-modals"></iframe>';B.firstChild.srcdoc=pageDoc(c.src)}
+  else{B.innerHTML='<textarea class="code" spellcheck="false"></textarea>';const t=B.firstChild;t.value=c.src;t.oninput=()=>{c.src=t.value}}}
+ else if(c.kind=='doc'){$('#cvtabs').innerHTML='';B.innerHTML=`<div class="dtb"><button onclick="ex('bold')"><b>B</b></button><button onclick="ex('italic')"><i>I</i></button><button onclick="ex('formatBlock','h3')">Heading</button><button onclick="ex('formatBlock','p')">Text</button><button onclick="ex('insertUnorderedList')">• List</button><button onclick="ex('insertOrderedList')">1. List</button><button onclick="ex('undo')">Undo</button></div><div id="doc" contenteditable="true"></div>`;
+  const d=$('#doc');d.innerHTML=c.html||md(c.src);d.oninput=()=>{c.html=d.innerHTML}}
+ else{const sl=slidesOf(c);cvSl=Math.max(0,Math.min(cvSl,sl.length-1));$('#cvtabs').innerHTML='';
+  B.innerHTML=`<div class="stg"><div class="sld" id="sld" contenteditable="true"></div></div><div class="snav"><button class="ib" onclick="cvGo(-1)">${ic('chev',20).replace('<svg ','<svg style="transform:rotate(90deg)" ')}</button><span id="scnt"></span><button class="ib" onclick="cvGo(1)">${ic('chev',20).replace('<svg ','<svg style="transform:rotate(-90deg)" ')}</button><button class="ib" onclick="cvAddSlide()">${ic('plus',18)}</button><button class="ib" onclick="cvDelSlide()">${ic('trash',18)}</button></div>`;cvSlide()}}
+const ex=(c,v)=>{document.execCommand(c,false,v||null);const d=$('#doc');if(d)C.m[cvI].cv.html=d.innerHTML};
+function cvSlide(){const c=C.m[cvI].cv,sl=slidesOf(c),el=$('#sld');el.innerHTML=sl[cvSl];el.oninput=()=>{sl[cvSl]=el.innerHTML};$('#scnt').textContent=(cvSl+1)+' / '+sl.length}
+function cvGo(d){const c=C.m[cvI].cv,n=slidesOf(c).length;cvSl=Math.max(0,Math.min(n-1,cvSl+d));cvSlide()}
+function cvAddSlide(){const sl=slidesOf(C.m[cvI].cv);sl.splice(cvSl+1,0,'<h3>New slide</h3><ul><li>Point</li></ul>');cvSl++;cvSlide()}
+function cvDelSlide(){const sl=slidesOf(C.m[cvI].cv);if(sl.length<2)return toast('A deck needs at least one slide');sl.splice(cvSl,1);cvSl=Math.max(0,cvSl-1);cvSlide()}
+function deckHtml(c,title){const sl=slidesOf(c);return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>html,body{margin:0;height:100%;background:#0B0809;color:#fff;font-family:Inter,system-ui,sans-serif}.s{display:none;height:100%;box-sizing:border-box;padding:7vh 8vw;background:linear-gradient(135deg,#1B1315,#0B0809);border-top:6px solid #B3172B;font-size:clamp(16px,3vw,34px);line-height:1.5;overflow:auto}.s.on{display:block}h3{color:#C9A24B;font-size:1.8em;margin:0 0 .5em}li{margin:.3em 0}#c{position:fixed;right:14px;bottom:10px;color:#8C7F82;font-size:14px}</style></head><body>${sl.map((h,i)=>`<section class="s${i?'':' on'}">${h}</section>`).join('')}<div id="c"></div><script>var s=[].slice.call(document.querySelectorAll('.s')),i=0;function g(d){s[i].classList.remove('on');i=Math.max(0,Math.min(s.length-1,i+d));s[i].classList.add('on');document.getElementById('c').textContent=(i+1)+' / '+s.length}document.addEventListener('keydown',function(e){if(e.key=='ArrowRight'||e.key==' ')g(1);if(e.key=='ArrowLeft')g(-1)});document.addEventListener('click',function(e){g(e.clientX>innerWidth/2?1:-1)});g(0)<\/script></body></html>`}
+function docHtml(c,title){return `<!doctype html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>${esc(title)}</title><style>body{font-family:Calibri,Arial,sans-serif;line-height:1.6;max-width:760px;margin:30px auto;padding:0 16px}h3{color:#6B0F1A}table{border-collapse:collapse}td,th{border:1px solid #999;padding:4px 8px}</style></head><body>${c.html||md(c.src)}</body></html>`}
+async function saveOut(name,mime,text){const c=CA();if(c){try{const r=await c.saveFile({name,mime,text});if(r&&r.saved)toast('Saved '+name)}catch(e){toast('Save failed: '+(e.message||e))}}
+ else{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:mime}));a.download=name;a.click()}}
+function cvSave(el){const c=C.m[cvI].cv,t=cvTitle(c),f=t.replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-').toLowerCase()||'cathedrai';let it=[];
+ if(c.kind=='html')it=[{l:'Save as web page (.html)',ic:'code',fn:()=>saveOut(f+'.html','text/html',pageDoc(c.src))},{l:'Copy code',ic:'copy',fn:()=>{navigator.clipboard&&navigator.clipboard.writeText(c.src);toast('Copied')}}];
+ else if(c.kind=='doc')it=[{l:'Word-compatible (.doc)',s:'Opens in Word, Google Docs, WPS',ic:'file',fn:()=>saveOut(f+'.doc','application/msword',docHtml(c,t))},{l:'Web page (.html)',ic:'code',fn:()=>saveOut(f+'.html','text/html',docHtml(c,t))},{l:'Plain text (.txt)',ic:'file',fn:()=>saveOut(f+'.txt','text/plain',($('#doc')||{}).innerText||c.src)},{l:'Copy text',ic:'copy',fn:()=>{navigator.clipboard&&navigator.clipboard.writeText(($('#doc')||{}).innerText||c.src);toast('Copied')}}];
+ else it=[{l:'Slideshow (.html)',s:'Tap or arrow keys to move; opens in any browser',ic:'img',fn:()=>saveOut(f+'.html','text/html',deckHtml(c,t))},{l:'Outline (.md)',ic:'file',fn:()=>saveOut(f+'.md','text/markdown',c.src)}];
+ menu(el,it)}
 /* ---------- views ---------- */
-function msgIn(m,i){if(m.r=='u')return `${attH(m.a)}${md(m.t||'')}<div class="tb"><button onclick="editp(${i})">${ic('edit',14)}Edit</button><button onclick="cp(${i})">${ic('copy',14)}Copy</button></div>`;
- let t=m.t||'';if(m.live&&(t.match(/```/g)||[]).length%2)t+='\n```';
- return (m.live&&!m.t?`<p class="stat">${esc(m.status||'…')}</p>`:md(t))+(m.live?'':`<div class="tb"><button onclick="regen(${i})">${ic('regen',14)}Regenerate</button><button onclick="quote(${i})">${ic('quote',14)}Quote</button><button onclick="cp(${i})">${ic('copy',14)}Copy MD</button><button onclick="fork(${i})">${ic('fork',14)}Fork</button>${m.s?`<small class="ms">${esc(m.s)}</small>`:''}</div>`)}
+function msgIn(m,i){if(m.r=='u')return `${attH(m.a,i)}${md(m.t||'')}<div class="tb"><button onclick="editp(${i})">${ic('edit',14)}Edit</button><button onclick="cp(${i})">${ic('copy',14)}Copy</button></div>`;
+ let t=m.t||'',card='';if(m.live&&m.sty=='Canvas'){const p=cvParse(t);if(p){t=p.pre;card=`<p class="stat">Building your canvas… ${p.src.length} characters</p>`}}
+ if(m.live&&(t.match(/```/g)||[]).length%2)t+='\n```';
+ if(m.cv&&!m.live)card=cvCard(m,i);
+ const src=m.src&&m.src.length?`<div class="srcs">${m.src.map((x,k)=>`<a href="#" data-u="${esc(x.url)}" onclick="openUrl(this.dataset.u);return false">[${k+1}] ${esc(x.title.slice(0,60))}</a>`).join('')}</div>`:'';
+ return (m.live&&!t&&!card?`<p class="stat">${esc(m.status||'…')}</p>`:md(t))+card+src+(m.live?'':`<div class="tb"><button onclick="regen(${i})">${ic('regen',14)}Regenerate</button><button onclick="quote(${i})">${ic('quote',14)}Quote</button><button onclick="cp(${i})">${ic('copy',14)}Copy MD</button><button onclick="fork(${i})">${ic('fork',14)}Fork</button>${m.s?`<small class="ms">${esc(m.s)}</small>`:''}</div>`)}
 function updMsg(i){const el=document.getElementById('m'+i),V=$('#view');if(!el||!C.m[i])return;const near=V.scrollHeight-V.scrollTop-V.clientHeight<140;el.innerHTML=msgIn(C.m[i],i);if(near)V.scrollTop=V.scrollHeight}
 const sched=f=>{if(sched.p)return;sched.p=1;requestAnimationFrame(()=>{sched.p=0;f()})};
-const attH=a=>(a||[]).map(x=>x.img?`<img class="ai" src="${x.img}">`:`<span class="ach">${ic('file',14)}${esc(x.name)}</span>`).join('');
 function render(){const V=$('#view');
 if(view=='chat'){const ms=C.m;
 V.innerHTML=ms.length?`<div class="wrap">${ms.map((m,i)=>`<div class="msg ${m.r=='u'?'u':'a'}" id="m${i}">${msgIn(m,i)}</div>`).join('')}</div>`
@@ -338,59 +502,88 @@ dock()}
 /* ---------- chat ---------- */
 let curGen=null,idleT=null,loaded=null;
 try{const c=CA();if(c){c.addListener('token',e=>{curGen&&curGen.on(e.t)});c.addListener('prefill',e=>{curGen&&curGen.pre&&curGen.pre(e.done,e.total)})}}catch(e){}
-function sysP(){let t=PR[prof].p;if(mem.trim())t+='\n\nAlways keep these facts in mind:\n'+mem.trim();return t}
-function histMsgs(ms,F){const out=[{role:'system',content:sysP()}],cap=Math.floor(F.ctx*1.5);
+function sysP(F,extra){let t=PR[prof].p;if(mem.trim())t+='\n\nAlways keep these facts in mind:\n'+mem.trim();
+ if(F.think<.6)t+='\n\nAnswer briefly and directly.';else if(F.think>=2)t+='\n\nFor anything non-trivial, reason step by step first, then give the final answer clearly.';
+ t+='\n\nBegin every reply with one mood tag in square brackets that shows the feeling your reply carries, chosen from: happy, sad, mad, confused, surprised, sleepy, love, wink, smug, scared, excited, dizzy, calm. Example: "[happy] Of course!". The tag is only for the app; write the rest normally.';
+ return t+(extra?'\n\n'+extra:'')}
+function histMsgs(ms,F,extra,wctx){const out=[{role:'system',content:sysP(F,extra)}],cap=Math.floor(F.ctx*1.5);
  const add=(role,content)=>{const l=out[out.length-1];if(l.role==role)l.content+='\n\n'+content;else out.push({role,content})};
- for(const m of ms){if(m.err)continue;
-  if(m.r=='u'){let t=m.t||'';for(const a of m.a||[]){if(a.text!=null)t+=`\n\n[Attached file: ${a.name}]\n${a.text.slice(0,cap)}${a.text.length>cap?'\n[…truncated]':''}`;else t+=`\n\n[Attached: ${a.name}. This kind of file cannot be read yet.]`}
-   add('user',t.trim()||'(empty)')}
-  else if(m.t&&m.t!='Stopped.')add('assistant',m.t)}
+ ms.forEach((m,k)=>{if(m.err)return;
+  if(m.r=='u'){let t=m.t||'';for(const a of m.a||[]){if(a.text!=null)t+=`\n\n[Attached file: ${a.name}]\n${a.text.slice(0,cap)}${a.text.length>cap?'\n[…truncated]':''}`;else if(a.kind=='image')t+=`\n\n[Attached image: ${a.name}]`;else t+=`\n\n[Attached: ${a.name}. ${a.note||'This kind of file cannot be read yet.'}]`}
+   if(k==ms.length-1&&wctx)t+=webPrompt(wctx);add('user',t.trim()||'(empty)')}
+  else if(m.t&&m.t!='Stopped.')add('assistant',m.cv?m.t+'\n```'+(m.cv.kind=='doc'?'canvas-doc':m.cv.kind=='slides'?'canvas-slides':'html')+'\n'+m.cv.src+'\n```':m.t)});
  return out}
-async function ensureLoaded(am,say){const F=FAC[fac],thr=cfg.threads||0;
- if(loaded&&loaded.path==am.path&&loaded.req==F.ctx&&loaded.thr==thr)return;
- say&&say('Loading '+am.n+'… (the first load can take a few seconds)');dlog('engine','load '+am.file+' ctx='+F.ctx+' thr='+thr);loaded=null;
- const r=await CA().loadModel({path:am.path,nCtx:F.ctx,threads:thr});if(!r.ok)throw new Error(r.error||'load failed');
- loaded={path:am.path,req:F.ctx,thr,info:r};dlog('engine','loaded ctx='+r.ctx+' template='+r.template+' in '+r.ms+'ms')}
+async function ensureLoaded(am,say){const F=FAC[fac],thr=cfg.threads||0,pj=am.projPath||'';
+ if(loaded&&loaded.path==am.path&&loaded.req==F.ctx&&loaded.thr==thr&&loaded.pj==pj)return;
+ say&&say('Loading '+am.n+'… (the first load can take a few seconds)');dlog('engine','load '+am.file+' ctx='+F.ctx+' thr='+thr+(pj?' vision':''));loaded=null;
+ const r=await CA().loadModel({path:am.path,nCtx:F.ctx,threads:thr,proj:pj});if(!r.ok)throw new Error(r.error||'load failed');
+ loaded={path:am.path,req:F.ctx,thr,pj,info:r};dlog('engine','loaded ctx='+r.ctx+' arch='+r.arch+' vision='+r.vision+' template='+r.template+' in '+r.ms+'ms');
+ if(r.visionErr)toast('Image support off: '+r.visionErr)}
 async function unloadIdle(){if(busy||!loaded)return;try{await CA().unloadModel()}catch(e){}loaded=null;dlog('engine','idle unload')}
 function setBusy(b){busy=b;$('#send').innerHTML=b?ic('stop',16)+'STOP':'EXECUTE'+ic('send',16)}
+const ARCH_MSG=m=>/unknown model architecture/i.test(m)?'This model is newer than the engine inside the app. Rebuild the APK with a newer llama.cpp (Actions > Build APK > Run workflow > llama_tag, for example b9842 or later).\n\nTechnical detail: '+m:m;
 async function ask(q,at,files){if(busy)return;if(at==null&&!q.trim()&&!(files&&files.length))return;
-const c=C,F=FAC[fac];setBusy(true);stop=false;clearTimeout(idleT);
+const c=C,F=FAC[fac],mode=sty,wm=web;setBusy(true);stop=false;clearTimeout(idleT);clearTimeout(tt);
 if(at==null){c.m.push({r:'u',t:q,a:files||[]});if(c.m.length==1)c.t=(q||files[0].name).slice(0,28)}
-const idx=at??c.m.length,m={r:'a',t:'',status:'Preparing…',live:true};c.m[idx]=m;nav();render();
-const upd=()=>{if(C==c&&view=='chat')updMsg(idx)};let first=true;
+const idx=at??c.m.length,m={r:'a',t:'',status:'Preparing…',live:true,sty:mode};c.m[idx]=m;nav();render();
+const upd=()=>{if(C==c&&view=='chat')updMsg(idx)};let first=true,raw='',tagDone=false,mood=null;
+const um=c.m[idx-1];
 try{
  if(!CA())throw new UserErr('The AI engine only runs inside the Android app. This browser preview has no model.');
  const am=models.find(x=>x.id==act&&x.st=='ready');
  if(!am)throw new UserErr('No Saint is appointed yet. Open **Appoint Your Saint**, then download or import a model.');
- setEmo('think');
+ if(mode=='Image'){setEmo('confused');tt=setTimeout(()=>setEmo('idle'),2600);throw new UserErr('**This Saint cannot draw.** Image generation needs an image model (a diffusion model), and no model in CathedrAI is one yet: Gemma 4 can *look at* pictures but not *make* them.\n\nWhat I can do instead: switch the output type to **Canvas** and ask for an SVG illustration, a diagram or a styled web page.')}
+ const hasImgs=um&&(um.a||[]).some(a=>a.kind=='image'&&a.rgb);
+ if(hasImgs&&!am.projPath)toast('This Saint has no vision file yet, so it cannot see the image. See Appoint Your Saint.');
+ /* mood: instant guess from the prompt so BMO reacts straight away; the model's own tag replaces it */
+ mood=guessMood((um&&um.t)||'');setEmo(mood||'think');
+ /* web */
+ let wctx=null;
+ if(wm!='off'&&um&&um.r=='u'){if(at!=null&&um.web&&um.web.mode==wm)wctx=um.web;else{const qq=(um.t||'').replace(/^>.*\n+/gm,'').trim().slice(0,220);
+   if(qq){try{wctx=await webResearch(qq,wm,F,s=>{m.status=s;upd()});um.web=wctx}catch(e){dlog('web','failed: '+e.message);toast('Web search failed: '+e.message);m.status='Web search failed, answering without it…';upd()}}}}
+ if(wctx)m.src=wctx.src;
+ if(stop)throw new UserErr('Stopped.');
  await ensureLoaded(am,s=>{m.status=s;upd()});
  if(stop)throw new UserErr('Stopped.');
- const hist=histMsgs(c.m.slice(0,idx),F);m.status='Reading your message…';upd();
- curGen={on:t=>{if(first){first=false;m.status='';setEmo('talk');talking=true}m.t+=t;sched(upd)},pre:(d,t)=>{if(first){m.status=`Reading your message… ${d}/${t} tokens`;sched(upd)}}};
- const r=await CA().generate({messages:hist,temp:F.temp,topP:F.top,topK:40,repeat:1.1,maxTokens:cfg.maxTok,seed:-1});
+ const extra=mode=='Canvas'?CV_RULES:'';
+ const hist=histMsgs(c.m.slice(0,idx),F,extra,wctx);m.status='Reading your message…';upd();
+ const imgs=(loaded&&loaded.info.vision&&um)?(um.a||[]).filter(a=>a.kind=='image'&&a.rgb).slice(0,4).map(a=>({w:a.rgb.w,h:a.rgb.h,rgb:a.rgb.b64})):[];
+ const show=t=>{m.t+=t;sched(upd)};
+ curGen={on:t=>{if(first){first=false;m.status='';talking=true}
+   if(tagDone){show(t);return}
+   raw+=t;const lead=raw.replace(/^\s+/,'');
+   if(lead[0]=='['){const e=lead.indexOf(']');if(e>0&&e<24){const mo=moodOf(lead.slice(1,e));if(mo)mood=mo;tagDone=true;const rest=lead.slice(e+1).replace(/^[ \t]*/,'');if(rest)show(rest);if(mood)setEmo(mood);if(mood){tt=setTimeout(()=>{if(busy)setEmo('talk')},3000)}else setEmo('talk');return}
+    if(e>=24||lead.length>26){tagDone=true;show(raw);setEmo(mood||'talk')}}
+   else if(lead.length>0){tagDone=true;show(raw);setEmo(mood||'talk')}},
+  pre:(d,t)=>{if(first){m.status=imgs.length&&d==t?'Looking at the image…':`Reading your message… ${d}/${t} tokens`;sched(upd)}}};
+ if(imgs.length){m.status='Looking at your image… (the first image can take a minute on CPU)';upd()}
+ const r=await CA().generate({messages:hist,temp:F.temp,topP:F.top,topK:F.topk,repeat:F.rep,maxTokens:Math.min(8192,Math.round(cfg.maxTok*(wm=='deep'?1.5:1))),seed:-1,images:imgs});
  if(!r.ok)throw new Error(r.error||'generation failed');
+ if(!tagDone&&raw)m.t+=raw;
  if(!m.t)m.t=r.reason=='user'?'Stopped.':'(The Saint returned an empty reply.)';
- m.s=`${r.gen} tokens · ${r.tps} tok/s`+(r.reused?` · ${r.reused} cached`:'')+(r.trimmed?` · ${r.trimmed} old messages dropped`:'')+(r.reason=='length'?' · reply limit reached':'')+(r.reason=='ctx'?' · context full':'');
+ m.t=m.t.replace(/^\s*\[[a-z]{3,12}\]\s*/i,'');
+ if(mode=='Canvas'){const p=cvParse(m.t);if(p){m.cv={kind:p.kind,src:p.src};m.t=(p.pre+(p.post?'\n\n'+p.post:'')).trim()||'Your canvas is ready.'}}
+ m.s=`${r.gen} tokens · ${r.tps} tok/s`+(r.reused?` · ${r.reused} cached`:'')+(r.trimmed?` · ${r.trimmed} old messages dropped`:'')+(r.reason=='length'?' · reply limit reached':'')+(r.reason=='ctx'?' · context full':'')+` · T${F.temp} p${F.top} k${F.topk} ctx${loaded.info.ctx} ${cfg.threads||'auto'}thr`+(wctx?' · web '+wm:'')+(imgs.length?' · '+imgs.length+' image'+(imgs.length>1?'s':''):'');
+ if(r.imgIgnored)toast('The image was ignored: no vision file is loaded');
  dlog('chat',m.s)
 }catch(e){const msg=(e&&e.message)||String(e);dlog('chat','error: '+msg);
- if(e instanceof UserErr)m.t=msg;else m.t='⚠ '+msg+'\n\nOpen **Diagnostics** to see the engine log.';
- m.err=true;if(m.t=='Stopped.')m.err=false}
-curGen=null;m.live=false;m.status='';talking=false;setEmo('idle');setBusy(false);stop=false;save();
-idleT=setTimeout(unloadIdle,300000);if(C==c&&view=='chat')render()}
-function bn(){$('#ban').innerHTML=(pend?`<div class="bn"><span>${pend.k=='edit'?'Editing prompt (sending replaces it and later replies)':'Replying to: '+esc(pend.t)}</span><button class="ib" style="padding:2px" onclick="cancel()">${ic('x',14)}</button></div>`:'')+(att.length?`<div style="margin-bottom:6px">${att.map((a,i)=>`<span class="ch" title="${a.text!=null?'text read: '+a.text.length+' characters':'not readable by the Saint yet'}">${a.img?`<img src="${a.img}">`:ic('file',16)}<span>${esc(a.name)} · ${a.text!=null?'read':'not read'}</span><button onclick="rmA(${i})">${ic('x',12)}</button></span>`).join('')}</div>`:'')}
+ if(e instanceof UserErr)m.t=msg;else m.t='⚠ '+ARCH_MSG(msg)+'\n\nOpen **Diagnostics** to see the engine log.';
+ m.err=!(e instanceof UserErr)||/appointed|only runs/.test(msg);if(m.t=='Stopped.')m.err=false;if(mode=='Image')m.err=false}
+curGen=null;m.live=false;m.status='';talking=false;clearTimeout(tt);
+{const em=m.err?'sad':mood;setEmo(em&&E[em]?em:'idle');if(em&&E[em]&&em!='idle')tt=setTimeout(()=>setEmo('idle'),2800)}
+setBusy(false);stop=false;save();
+idleT=setTimeout(unloadIdle,300000);if(C==c&&view=='chat'){render();if(m.cv)cvOpen(idx)}}
+function bn(){$('#ban').innerHTML=(pend?`<div class="bn"><span>${pend.k=='edit'?'Editing prompt (sending replaces it and later replies)':'Replying to: '+esc(pend.t)}</span><button class="ib" style="padding:2px" onclick="cancel()">${ic('x',14)}</button></div>`:'')+(att.length?`<div style="margin-bottom:6px">${att.map((a,i)=>`<span class="ch" onclick="viewAtt('p',${i})" title="Tap to preview">${a.img?`<img src="${a.img}">`:ic('file',16)}<span>${esc(a.name)} · ${attOk(a)?(a.kind=='image'?'image':'read'):esc(a.note||'not read')}</span><button onclick="event.stopPropagation();rmA(${i})">${ic('x',12)}</button></span>`).join('')}</div>`:'')}
 const rmA=i=>{att.splice(i,1);bn()};
+for(const id of['fPhoto','fCam','fFile'])$('#'+id).onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(!fs.length)return;toast('Reading '+(fs.length>1?fs.length+' files':fs[0].name)+'…');let bad=0;for(const f of fs){const a=await readAtt(f);if(!attOk(a))bad++;att.push(a)}bn();if(bad)toast('Some files could not be read: tap the chip for the reason')};
 function cancel(){if(pend&&pend.k=='edit')$('#in').value='';pend=null;att=[];bn()}
-async function readAtt(f){const o={name:f.name,size:f.size,img:f.type.startsWith('image/')?URL.createObjectURL(f):null};
- if(!o.img&&(/^text\//.test(f.type)||/\.(txt|md|json|csv|tsv|js|ts|jsx|tsx|py|java|kt|c|h|cpp|hpp|cs|go|rs|rb|php|html|css|xml|ya?ml|toml|ini|sh|sql|log|tex|swift|lua|r)$/i.test(f.name))&&f.size<=600000){try{const t=await f.text();if(!/\u0000/.test(t.slice(0,2000)))o.text=t}catch(e){}}
- return o}
-for(const id of['fPhoto','fCam','fFile'])$('#'+id).onchange=async e=>{const fs=[...e.target.files];e.target.value='';let bad=0;for(const f of fs){const a=await readAtt(f);if(a.text==null)bad++;att.push(a)}bn();if(bad)toast('Only text and code files can be read for now')};
 function send(){if(busy){stop=true;try{CA()&&CA().stopGeneration()}catch(e){}return}let v=$('#in').value.trim();if(!v&&!att.length)return;
 if(pend){if(pend.k=='edit')C.m.splice(pend.i);else v='> '+pend.t+'\n\n'+v}
 const f=att;pend=null;att=[];bn();$('#in').value='';$('#in').style.height='auto';view='chat';ask(v,null,f)}
 function regen(i){if(i>0)ask(C.m[i-1].t||'',i)}
 function quote(i){pend={k:'quote',t:C.m[i].t.replace(/[#>*`\n]+/g,' ').trim().slice(0,70)};bn();$('#in').focus()}
 function editp(i){pend={k:'edit',i};bn();$('#in').value=C.m[i].t;$('#in').focus()}
-function cp(i){navigator.clipboard&&navigator.clipboard.writeText(C.m[i].t);toast('Copied')}
+function cp(i){const m=C.m[i];navigator.clipboard&&navigator.clipboard.writeText(m.cv?(m.t+'\n\n'+m.cv.src):m.t);toast('Copied')}
 function fork(i){C={t:'Branch: '+C.t,f:C.f,m:C.m.slice(0,i+1).map(x=>({...x}))};chats.unshift(C);go('chat');toast('Thread forked')}
 const ins=(t,s)=>t.setRangeText(s,t.selectionStart,t.selectionEnd,'end');
 $('#in').onkeydown=e=>{if(e.key=='Escape'){cancel();return}
@@ -404,7 +597,7 @@ $('#tg').onclick=()=>{$('#side').classList.toggle('min');dock()};
 $('#mic').onclick=()=>toast('Dictation: coming later');
 $('#live').onclick=()=>dlg('<h4>3D Live Talk Space</h4><p>Reserved for a later stage.</p><div class="ac"><button class="btn" onclick="cl()">Understood</button></div>');
 /* native: back button + status bar */
-if(NAT){const A=PL('App');A&&A.addListener('backButton',()=>{if(pop)return closeMenu();if($('#modal').style.display=='grid')return cl();if(pend||att.length)return cancel();if(view!='chat')return go('chat');A.exitApp()});
+if(NAT){const A=PL('App');A&&A.addListener('backButton',()=>{if(pop)return closeMenu();if($('#vw').style.display=='flex')return vwClose();if($('#cvp').style.display=='flex')return cvClose();if($('#modal').style.display=='grid')return cl();if(pend||att.length)return cancel();if(view!='chat')return go('chat');A.exitApp()});
 try{PL('StatusBar').setBackgroundColor({color:'#0B0809'});PL('StatusBar').setStyle({style:'DARK'})}catch(e){}}
 if(innerWidth<720)$('#side').classList.add('min');
 nav();render();document.fonts&&document.fonts.ready.then(dock);startup();

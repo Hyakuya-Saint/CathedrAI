@@ -559,6 +559,7 @@ public class CathedraPlugin extends Plugin {
         final String path = call.getString("path");
         final int nCtx = call.getInt("nCtx", 4096);
         final int thr = call.getInt("threads", 0);
+        final String proj = call.getString("proj", "");
         llm.execute(() -> {
             final String op = Diag.begin("load model " + path + " ctx=" + nCtx);
             keepAwake(true);
@@ -572,7 +573,7 @@ public class CathedraPlugin extends Plugin {
                 }
                 int threads = thr > 0 ? thr : defaultThreads();
                 Diag.log("engine", "loading with threads=" + threads + " availMem=" + availMemMb() + "MB");
-                String json = LlamaBridge.nLoad(path, nCtx, threads);
+                String json = LlamaBridge.nLoad(path, nCtx, threads, (proj != null && new File(proj).isFile()) ? proj : "");
                 JSObject o = new JSObject(json);
                 loadedPath = o.optBoolean("ok", false) ? path : null;
                 Diag.log("engine", "load result: " + json);
@@ -614,8 +615,23 @@ public class CathedraPlugin extends Plugin {
         final int maxTok = call.getInt("maxTokens", 1024);
         final int seed = call.getInt("seed", -1);
 
+        // images: base64 RGB strings, decoded off the UI thread below
+        final JSArray imgArr = call.getArray("images");
+        final int nImg = imgArr == null ? 0 : imgArr.length();
+        final int[] iw = new int[nImg], ih = new int[nImg];
+        final byte[][] ib = new byte[nImg][];
+        try {
+            for (int i = 0; i < nImg; i++) {
+                JSONObject o = imgArr.getJSONObject(i);
+                iw[i] = o.getInt("w"); ih[i] = o.getInt("h");
+                ib[i] = android.util.Base64.decode(o.getString("rgb"), android.util.Base64.DEFAULT);
+            }
+        } catch (Throwable t) {
+            call.resolve(err("Bad image data: " + msg(t)));
+            return;
+        }
         llm.execute(() -> {
-            final String op = Diag.begin("generate (" + n + " messages)");
+            final String op = Diag.begin("generate (" + n + " messages, " + nImg + " images)");
             keepAwake(true);
             try {
                 if (!LlamaBridge.loaded) { call.resolve(err("Engine library is not loaded.")); return; }
@@ -636,7 +652,7 @@ public class CathedraPlugin extends Plugin {
                         notifyListeners("prefill", o);
                     }
                 };
-                String json = LlamaBridge.nGenerate(roles, contents, temp, topP, topK, rep, maxTok, seed, cb);
+                String json = LlamaBridge.nGenerate(roles, contents, temp, topP, topK, rep, maxTok, seed, ib, iw, ih, cb);
                 call.resolve(new JSObject(json));
             } catch (Throwable t) {
                 Diag.log("engine", "generate FAILED " + t);
@@ -664,6 +680,110 @@ public class CathedraPlugin extends Plugin {
                 Diag.log("engine", "unload failed " + t);
             }
             call.resolve();
+        });
+    }
+
+
+    // ------------------------------------------------------------------ web, save, open
+    private volatile byte[] pendingSave = null;
+
+    /** Plain HTTP GET for web search and page reading (the WebView cannot do this itself: CORS). */
+    @PluginMethod
+    public void httpGet(final PluginCall call) {
+        final String url = call.getString("url", "");
+        final int maxBytes = call.getInt("maxBytes", 1500000);
+        if (!url.startsWith("http://") && !url.startsWith("https://")) { call.resolve(err("Only http(s) links can be fetched.")); return; }
+        io.execute(() -> {
+            HttpURLConnection c = null;
+            try {
+                c = (HttpURLConnection) new URL(url).openConnection();
+                c.setConnectTimeout(12000);
+                c.setReadTimeout(15000);
+                c.setInstanceFollowRedirects(true);
+                c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36");
+                c.setRequestProperty("Accept", "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5");
+                c.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
+                int code = c.getResponseCode();
+                InputStream in = code >= 400 ? c.getErrorStream() : c.getInputStream();
+                String ct = c.getContentType() == null ? "" : c.getContentType();
+                java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                if (in != null) {
+                    byte[] b = new byte[16384]; int n;
+                    while ((n = in.read(b)) > 0 && bo.size() < maxBytes) bo.write(b, 0, n);
+                    in.close();
+                }
+                String cs = "UTF-8";
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("charset=([\\w-]+)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(ct);
+                if (m.find()) cs = m.group(1);
+                String body;
+                try { body = new String(bo.toByteArray(), cs); } catch (Throwable t) { body = new String(bo.toByteArray(), StandardCharsets.UTF_8); }
+                JSObject o = new JSObject();
+                o.put("ok", code < 400);
+                o.put("status", code);
+                o.put("type", ct);
+                o.put("body", body);
+                if (code >= 400) o.put("error", "HTTP " + code);
+                call.resolve(o);
+            } catch (Throwable t) {
+                Diag.log("web", "GET failed " + url + " : " + t);
+                call.resolve(err("Could not reach the site: " + msg(t)));
+            } finally {
+                if (c != null) c.disconnect();
+            }
+        });
+    }
+
+    /** Opens a link in the system browser. */
+    @PluginMethod
+    public void openUrl(PluginCall call) {
+        String u = call.getString("url", "");
+        if (!u.startsWith("http://") && !u.startsWith("https://")) { call.reject("Not a web link"); return; }
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(u));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+            call.resolve();
+        } catch (Throwable t) {
+            call.reject("Could not open the link: " + msg(t));
+        }
+    }
+
+    /** "Save as" through Android's document picker (no storage permission needed). */
+    @PluginMethod
+    public void saveFile(PluginCall call) {
+        String name = call.getString("name", "cathedrai.txt").replaceAll("[^A-Za-z0-9._+() -]", "_");
+        String mime = call.getString("mime", "text/plain");
+        pendingSave = call.getString("text", "").getBytes(StandardCharsets.UTF_8);
+        Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.setType(mime);
+        i.putExtra(Intent.EXTRA_TITLE, name);
+        startActivityForResult(call, i, "saveResult");
+    }
+
+    @ActivityCallback
+    private void saveResult(PluginCall call, ActivityResult result) {
+        if (call == null) return;
+        final byte[] data = pendingSave;
+        pendingSave = null;
+        Intent d = result.getData();
+        if (result.getResultCode() != Activity.RESULT_OK || d == null || d.getData() == null || data == null) {
+            JSObject o = new JSObject();
+            o.put("cancelled", true);
+            call.resolve(o);
+            return;
+        }
+        final Uri uri = d.getData();
+        io.execute(() -> {
+            try (java.io.OutputStream os = getContext().getContentResolver().openOutputStream(uri, "wt")) {
+                if (os == null) throw new IOException("Android refused to open the destination");
+                os.write(data);
+                JSObject o = new JSObject();
+                o.put("saved", true);
+                call.resolve(o);
+            } catch (Throwable t) {
+                call.reject("Could not save: " + msg(t));
+            }
         });
     }
 
@@ -707,6 +827,7 @@ public class CathedraPlugin extends Plugin {
                 eng.put("llamaTag", BuildInfo.LLAMA_TAG);
                 eng.put("appVersion", BuildInfo.APP_VERSION);
                 eng.put("modelLoaded", loadedPath != null);
+                eng.put("vision", LlamaBridge.loaded && LlamaBridge.nVisionCompiled());
                 eng.put("modelPath", loadedPath == null ? "" : loadedPath);
                 String sys = "";
                 if (LlamaBridge.loaded) {
