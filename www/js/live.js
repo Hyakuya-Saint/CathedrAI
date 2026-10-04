@@ -2,7 +2,7 @@
    Classic script, loaded before the main script. Heavy modules (space.js, voice.js, ears.js) are imported on demand. */
 'use strict';
 let vessels = [], voices = [], actV = null, actVo = null;
-let vxo = { hear: 'auto', sens: 0.5, nr: 'medium', near: 0.55, chop: 'mixed', ink: true, halftone: true, edges: false, neon: true, toon: true, fps: 60, framing: 'full', bubbly: true, bounce: 1, wake: true, emo: true, emoK: 1, na: {} };
+let vxo = { hear: 'auto', sens: 0.5, nr: 'medium', near: 0.55, chop: 'mixed', ink: true, halftone: true, edges: false, neon: true, toon: true, fps: 60, framing: 'full', bubbly: true, bounce: 1, smooth: true, wake: true, emo: true, emoK: 1, na: {} };
 const LV = { on: false, busy: false, state: 'idle', mute: false };
 window.LV = LV;
 const VXLOG = [];
@@ -136,7 +136,7 @@ async function vxTestVoice(mood) {
   const lines = { happy: 'Oh, that is wonderful news, I am so glad you came!', excited: 'Yes! It finally works, I cannot believe it!', angry: 'I told you not to touch that. Why will you never listen?', sad: 'I miss the way things used to be. It is so quiet now.', sleepy: 'It is very late. I can hardly keep my eyes open.', scared: 'Did you hear that? Something is in the dark, behind us.', surprised: 'Wait, what? You did that all by yourself?', love: 'You always know how to make me smile.', pout: 'Fine. Be that way. See if I care.', confused: 'Hmm, I do not understand. Could you say that again?', wink: 'Oh, I know your little secret. I will not tell.', smug: 'Of course I got it right. I always do.', dizzy: 'Everything is spinning. Please, hold still.', calm: 'Breathe in, breathe out. There is no hurry at all.', think: 'Let me think about that for a moment.' };
   try {
     const { V } = await useVoiceFor(P_()); const P = P_(); V.stopSpeaking(); const t0 = performance.now();
-    await V.speak(mood ? (lines[mood] || 'This is how I sound.') : 'Greetings, my child. This is how your Saint sounds.', { speaker: spkOf(P), speed: P.speed || 1, mood, onStart: () => toast('Speaking' + (mood ? ' (' + mood + ')' : '') + ' · ' + V.engine() + '…') });
+    await V.speak(mood ? (lines[mood] || 'This is how I sound.') : 'Greetings, my child. This is how your Saint sounds.', { speaker: spkOf(P), speed: P.speed || 1, mood, blend: false, onStart: () => toast('Speaking' + (mood ? ' (' + mood + ')' : '') + ' · ' + V.engine() + '…') });
     vlog('test voice ok in ' + Math.round(performance.now() - t0) + ' ms');
   } catch (e) { toast('Voice error: ' + ((e && e.message) || e)); vlog('test voice: ' + ((e && e.message) || e)); }
 }
@@ -190,11 +190,11 @@ ${chk('ink', 'Ink shading')}${chk('halftone', 'Halftone dots')}${chk('edges', 'I
 <label>Frame rate</label>${sel('fps', [[60, '60 fps'], [30, '30 fps (saves battery)']])}
 <label>Camera</label>${sel('framing', [['full', 'Full body'], ['upper', 'Upper body'], ['face', 'Face focus']])}
 <div class="hint">In the live space: drag to turn the camera, pinch or scroll to zoom, two fingers to move it, double-tap to reset. The buttons at the top left switch Face / Upper / Full or start the orbit.</div>
-${chk('bubbly', 'Bubbly transitions between poses')}<label>Bounciness: <b id="v_bnc">${Math.round(vxo.bounce * 100)}%</b></label><input type="range" min="0" max="2" step=".1" value="${vxo.bounce}" oninput="document.getElementById('v_bnc').textContent=Math.round(this.value*100)+'%';vxOpt('bounce',this.value)">
+${chk('smooth', 'Smooth motion while speaking and acting (chop timing only when idle)')}${chk('bubbly', 'Bubbly transitions between poses')}<label>Bounciness: <b id="v_bnc">${Math.round(vxo.bounce * 100)}%</b></label><input type="range" min="0" max="2" step=".1" value="${vxo.bounce}" oninput="document.getElementById('v_bnc').textContent=Math.round(this.value*100)+'%';vxOpt('bounce',this.value)">
 <div class="hint">The space is dark grey with a neon horizon and no scenery. Keep the screen awake: ${''}</div>${chk('wake', 'Keep the screen on during live talk')}
 <label>Saint sleeps after idle</label><select onchange="cfg.sleepMin=+this.value;save();armSleep()">${[[0, 'Never'], [1, '1 minute'], [2, '2 minutes'], [5, '5 minutes'], [10, '10 minutes'], [15, '15 minutes'], [30, '30 minutes']].map(([v, l]) => `<option value="${v}" ${cfg.sleepMin == v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`;
 }
-const spOpts = () => ({ chop: vxo.chop, ink: vxo.ink, halftone: vxo.halftone, edges: vxo.edges, neon: vxo.neon, toonModel: vxo.toon, fps: vxo.fps, framing: vxo.framing, bubbly: vxo.bubbly, bounce: vxo.bounce });
+const spOpts = () => ({ chop: vxo.chop, ink: vxo.ink, halftone: vxo.halftone, edges: vxo.edges, neon: vxo.neon, toonModel: vxo.toon, fps: vxo.fps, framing: vxo.framing, bubbly: vxo.bubbly, bounce: vxo.bounce, smoothAction: vxo.smooth !== false });
 function vxForget() { try { _ears && _ears.forgetNear(); } catch (e) { /* ignore */ } toast('Listening again to learn your voice'); }
 function vxOpt(k, v) {
   if (k === 'fps') v = +v; if (k === 'near' || k === 'bounce' || k === 'emoK') v = +v; vxo[k] = v; save();

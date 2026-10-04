@@ -191,9 +191,25 @@ POSE.dance = (t, S) => ANIM['groove'].fn(t, S);   // replaced by a random dance 
   POSE.sad = (t, S) => { sad(t, S); S.m('Fcl_BRW_Surprised', .25); }; }
 
 // ------------------------------------------------------------------ idle animations (random, when left alone)
-const wave = (t, S, who = 'R') => {
-  S.k(who + '.upperArm', 0, -.1, 1.3); S.k(who + '.lowerArm', 0, -.2, sn(t * 9) * .5); S.k(who + '.hand', 0, 0, sn(t * 9 + 1) * .35); S.f(who, 'Open');
-};
+// Plays a studio-page animation (space-anim.js) at weight w (0..1) on top of whatever the caller already wrote into S this
+// frame. Used so the intro greeting and the idle wave can fade the Energetic Wave in and out instead of snapping to it.
+function mixPose(slug, t, S, w) {
+  const an = ANIM[slug]; if (!an || !(w > 0)) return;
+  if (w >= .999) { an.fn(t, S); return; }
+  const P = {
+    drop: S.drop,
+    k(key, x, y, z) { const o = S.get(key); if (!o) return S.k(key, x * w, y * w, z * w); S.k(key, o[0] + (x - o[0]) * w, o[1] + (y - o[1]) * w, o[2] + (z - o[2]) * w); },
+    a(key, x, y, z) { S.a(key, x * w, y * w, z * w); },
+    hip(x, y, z) { const o = S.getHip(); S.hip(o[0] + (x - o[0]) * w, o[1] + (y - o[1]) * w, o[2] + (z - o[2]) * w); },
+    hipA(x, y, z) { S.hipA(x * w, y * w, z * w); },
+    f(side, name) { S.f(side, name); },          // fingers are eased by the rig already
+    e(name, v) { S.e(name, v * w); },
+    m(name, v) { S.m(name, v * w); },
+    blinkId(id) { S.blinkId(id); }, gaze(a, b) { S.gaze(a, b); }, eyeHead(a, b) { S.eyeHead(a, b); }, look(b) { S.look(b); },
+  };
+  an.fn(t, P);
+}
+
 export const IDLE_ANIMS = [
   { name: 'stretch', dur: 3.4, fn(t, S) {
       const up = sstep(.2, 1.1, t) * (1 - sstep(2.6, 3.3, t)), sh = sn(t * 26) * .02 * sstep(1.6, 1.8, t) * (1 - sstep(2.2, 2.4, t));
@@ -212,10 +228,9 @@ export const IDLE_ANIMS = [
       S.k('R.upperArm', 0, -.2 * up, -1.2 + up * 2.3); S.k('R.lowerArm', 0, 0, up * (1.9 + fid)); S.k('R.hand', 0, 0, up * sn(t * 6 + 1) * .2); S.f('R', 'Loose');
       S.k('head', 0, -.08 * up, -.2 * up); S.k('neck', 0, 0, -.06 * up); S.e('relaxed', .45 * up); S.look(true);
     } },
-  { name: 'small-wave', dur: 2.6, fn(t, S) {
-      const up = sstep(.15, .6, t) * (1 - sstep(2.1, 2.5, t));
-      S.k('R.upperArm', 0, -.1 * up, -1.2 + up * 2.5); S.k('R.lowerArm', 0, -.2, up * sn(t * 9) * .5); S.k('R.hand', 0, 0, up * sn(t * 9 + 1) * .35); S.f('R', 'Open');
-      S.k('head', 0, 0, .12 * up); S.e('happy', .45 * up); S.e('relaxed', .3 * up);
+  { name: 'small-wave', dur: 3.4, fn(t, S) { // the studio page's Energetic Wave, eased in and out
+      const up = sstep(.15, .7, t) * (1 - sstep(2.8, 3.3, t));
+      mixPose('wave', t, S, up);
     } },
   { name: 'yawn', dur: 3.2, fn(t, S) {
       const y = sstep(.3, 1.0, t) * (1 - sstep(1.9, 2.5, t)), up = sstep(.15, .9, t) * (1 - sstep(2.3, 3.0, t));
@@ -260,11 +275,9 @@ export function introPose(t, S, ev) {
   S.k('B.upperArm', 0, -.05, -1.2 + arms * 2.0); S.k('B.lowerArm', 0, -.15, 0); S.f('B', 'Open');
   S.k('B.upperLeg', -land * .38, 0, .04); S.k('B.lowerLeg', land * .75, 0, 0);
   S.k('spine', land * .1 - arms * .05, 0, 0); S.k('head', -.2 * arms + land * .08, 0, 0);
-  const w = sstep(1.2, 1.6, t) * (1 - sstep(3.0, 3.4, t));
-  if (w > 0) {
-    S.k('R.upperArm', 0, -.1, -1.2 + w * 2.5); S.k('R.lowerArm', 0, -.2, w * sn(t * 9) * .5); S.k('R.hand', 0, 0, w * sn(t * 9 + 1) * .35); S.f('R', 'Open');
-    S.k('head', .04, 0, .12 * w); S.k('spine', 0, 0, -.03 * w);
-  }
+  // greeting: the studio page's Energetic Wave (starts at its own phase 0 when it begins)
+  const w = sstep(1.2, 1.65, t) * (1 - sstep(3.0, 3.4, t));
+  if (w > 0) mixPose('wave', t - 1.2, S, w);
   const bow = sstep(3.2, 3.5, t) * (1 - sstep(3.55, 3.9, t));
   if (bow > 0) { S.k('spine', .38 * bow, 0, 0); S.k('chest', .2 * bow, 0, 0); S.k('head', .12 * bow, 0, 0); }
   S.e('surprised', arms * .8); S.e('happy', 1 - arms * .9); S.look(w > 0 || arms > .5);

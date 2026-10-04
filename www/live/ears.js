@@ -50,6 +50,7 @@ const mic = {
   },
   _lost() { for (const s of this.subs) s.onError && s.onError('The microphone stopped (another app took it?).'); this.close(); },
   _chunk(x) {
+    if (!this.rs || !this.dn) return;   // a last audio block can arrive just after the microphone was closed
     const y = this.rs.process(x);
     if (this.accN + y.length > this.acc.length) { const n = new Float32Array((this.accN + y.length) * 2); n.set(this.acc.subarray(0, this.accN)); this.acc = n; }
     this.acc.set(y, this.accN); this.accN += y.length;

@@ -3,7 +3,7 @@
 // Contract: docs/MODULE_API.md section 2.
 import { cleanForSpeech, splitSentences } from './dsp.js';
 import { readOnnxMeta, parseTokens, parseSpeakerMap, phonemesToIds, styleFor, parseVoicesBin } from './kitten.js';
-import { prosodyFor } from './emotion.js';
+import { prosodyFor, createMoodBlender } from './emotion.js';
 
 const V = new URL('../vendor/', import.meta.url).href;
 const ORT_VER = '1.20.1';
@@ -156,6 +156,7 @@ async function createSession(buf) {
 }
 
 const NEUTRAL_PR = prosodyFor(null, 0);
+const blender = createMoodBlender();   // keeps the tone between sentences so mood changes are walked, not jumped
 // model speed for a sentence: the mood's rate, divided by the pitch factor because the audio is later played `pitch` times faster
 const modelSpeed = (speed, pr) => Math.max(0.5, Math.min(2, (speed || 1) * pr.speed / pr.pitch));
 function peakNorm(pcm) {
@@ -205,11 +206,18 @@ function playPcm(pcm, rate, volume, pr = NEUTRAL_PR) {
   const ctx = audioCtx(), buf = ctx.createBuffer(1, pcm.length, Math.round(rate * pr.pitch)); // playing faster = higher pitch (the model already spoke slower to keep the timing)
   buf.copyToChannel(pcm, 0);
   const src = ctx.createBufferSource(); src.buffer = buf;
+  const t = Math.max(ctx.currentTime + 0.03, S.nextT), GLIDE = 0.45;
   let tail = src; const extra = [];
-  if (Math.abs(pr.bright) > 0.3) { const sh = ctx.createBiquadFilter(); sh.type = 'highshelf'; sh.frequency.value = 3200; sh.gain.value = pr.bright; tail.connect(sh); tail = sh; extra.push(sh); }
-  const mg = ctx.createGain(); mg.gain.value = pr.vol * (pr.trem ? 1 - pr.trem / 2 : 1); tail.connect(mg); mg.connect(S.gain); extra.push(mg);
+  const pv = pr.prev;   // where the previous sentence ended; the first moments of this one glide from there (vol + brightness are cheap to ramp)
+  if (Math.max(Math.abs(pr.bright), pv ? Math.abs(pv.bright) : 0) > 0.3) {
+    const sh = ctx.createBiquadFilter(); sh.type = 'highshelf'; sh.frequency.value = 3200;
+    if (pv) { sh.gain.setValueAtTime(pv.bright, t); sh.gain.linearRampToValueAtTime(pr.bright, t + GLIDE); } else sh.gain.value = pr.bright;
+    tail.connect(sh); tail = sh; extra.push(sh);
+  }
+  const tk = pr.trem ? 1 - pr.trem / 2 : 1, mg = ctx.createGain();
+  if (pv) { mg.gain.setValueAtTime(pv.vol * tk, t); mg.gain.linearRampToValueAtTime(pr.vol * tk, t + GLIDE); } else mg.gain.value = pr.vol * tk;
+  tail.connect(mg); mg.connect(S.gain); extra.push(mg);
   S.gain.gain.value = volume == null ? 1 : volume;
-  const t = Math.max(ctx.currentTime + 0.03, S.nextT);
   if (pr.trem > 0) { const lfo = ctx.createOscillator(), d = ctx.createGain(); lfo.frequency.value = pr.tremHz; d.gain.value = pr.trem / 2; lfo.connect(d); d.connect(mg.gain); lfo.start(t); lfo.stop(t + buf.duration + 0.1); extra.push(lfo, d); }
   src.start(t); S.nextT = t + buf.duration;
   S.sources.add(src);
@@ -324,6 +332,8 @@ export const Voice = {
   },
   /** Emotional tone: on/off and strength (0..1.5). Applies to sentences spoken after the call. */
   setEmotion(on, strength) { S.emo.on = !!on; if (strength != null) S.emo.k = Math.max(0, Math.min(1.5, +strength || 0)); },
+  /** forget the current tone (a new conversation starts neutral) */
+  resetTone() { blender.reset(); },
   unloadSaintVoice() {
     this.stopSpeaking();
     try { S.session && S.session.release && S.session.release(); } catch (e) { /* ignore */ }
@@ -334,13 +344,16 @@ export const Voice = {
   get voiceName() { return S.name; },
 
   /** mood: any name from live/emotion.js (happy, sad, angry, ...); ignored when emotion is off or the system voice is speaking */
-  speak(text, { speaker = 0, speed = 1, volume = 1, signal, onStart, mood } = {}) {
+  speak(text, { speaker = 0, speed = 1, volume = 1, signal, onStart, mood, blend = true } = {}) {
     const sents = splitSentences(cleanForSpeech(text));
     if (!sents.length) return Promise.resolve();
-    const pr = prosodyFor(mood, S.emo.on ? S.emo.k : 0);
+    const k = S.emo.on ? S.emo.k : 0;
+    // blend:false = exactly the mood's preset (used by the Hub test buttons); otherwise the tone is walked from the previous sentence
+    const solo = (!blend || !k) ? prosodyFor(mood, k) : null;
     audioCtx();
     const dones = sents.map((t, i) => new Promise(resolve => {
       S.speaking++;
+      const pr = solo || blender.step(mood, k);
       S.q.push({ text: t, i, gen: S.gen, o: { speaker, speed, volume, signal, onStart, pr }, resolve });
     }));
     if (S.pumping && S.q.length === sents.length) startSynth(S.q[0]);
@@ -358,7 +371,10 @@ export const Voice = {
   isSpeaking() { return S.speaking > 0 || S.sources.size > 0 || S.sys.on; },
 
   getOutLevel() {
-    const L = S.level; let rms = 0, low = 0, mid = 0, high = 0;
+    const L = S.level, nowMs = performance.now();
+    if (nowMs - (S.levelT || 0) < 8) return L;   // already measured this frame (mouth driver + waveform both ask): one FFT read per frame, one smoothing step
+    S.levelT = nowMs;
+    let rms = 0, low = 0, mid = 0, high = 0;
     if (S.sources.size && S.analyser) {
       S.analyser.getFloatTimeDomainData(S.td); let e = 0; for (let i = 0; i < S.td.length; i++) e += S.td[i] * S.td[i];
       rms = Math.min(1, Math.sqrt(e / S.td.length) * 4.5);

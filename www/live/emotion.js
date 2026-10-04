@@ -50,3 +50,33 @@ export function prosodyFor(mood, strength = 1) {
   return out;
 }
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+
+/* ---------------------------------------------------------------- tone blending between sentences
+   Speaking each sentence with its mood's preset on its own makes a sad -> happy switch an instant jump (and the happy preset lands
+   at full strength right after a slow, dark sentence, which sounds over-the-top). The blender keeps the tone the Saint is currently
+   speaking in and, when the target mood changes, walks there over a few sentences: 45 % of the way on the first sentence of the new
+   mood, 80 % on the second, all the way on the third. If nothing was said for a while the tone relaxes toward neutral first,
+   so a reply that starts a minute later is not coloured by the last one. Same mood again = exactly that mood. */
+const KEYS = Object.keys(NEUTRAL);
+const mixP = (a, b, w) => { const o = { ...b }; for (const k of KEYS) o[k] = a[k] + (b[k] - a[k]) * w; return o; };
+export const BLEND_RAMP = [0.45, 0.8, 1];
+export function createMoodBlender({ ramp = BLEND_RAMP, relaxMs = 9000 } = {}) {
+  let cur = { ...NEUTRAL }, from = { ...NEUTRAL }, name = undefined, n = 0, last = 0;
+  return {
+    /** prosody for the next sentence. `.prev` is where the previous sentence ended (vol / bright), so playback can glide from it. */
+    step(mood, strength = 1, now = Date.now()) {
+      const tgt = prosodyFor(mood, strength);
+      if (last && now - last > relaxMs) { cur = mixP(cur, { ...NEUTRAL }, 0.6); name = undefined; }
+      if (tgt.mood !== name) { name = tgt.mood; from = { ...cur }; n = 0; }
+      const prev = { vol: cur.vol, bright: cur.bright }, w = ramp[Math.min(n, ramp.length - 1)]; n++;
+      cur = mixP(from, tgt, w);
+      if (n >= ramp.length) cur = { ...tgt };      // arrived: exactly the preset
+      last = now;
+      const out = { ...cur, mood: tgt.mood, prev, blend: w };
+      out.speed = clamp(out.speed, 0.6, 1.5); out.pitch = clamp(out.pitch, 0.85, 1.15); out.vol = clamp(out.vol, 0.3, 1.08);
+      return out;
+    },
+    reset() { cur = { ...NEUTRAL }; from = { ...NEUTRAL }; name = undefined; n = 0; last = 0; },
+    get current() { return { ...cur }; },
+  };
+}

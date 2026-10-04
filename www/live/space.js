@@ -151,8 +151,9 @@ const clampL = (v, l) => (v > l ? l : v < -l ? -l : v);
 const rnd = (a, b) => a + Math.random() * (b - a);
 
 const DEFAULTS = { chop: 'mixed', ink: true, halftone: true, edges: false, neon: true, toonModel: true, fps: 60, pixelRatio: null, framing: 'full',
-  modelOutline: true, particles: true, idleMin: 6, idleMax: 14, bubbly: true, bounce: 1, flourish: .7 };
+  modelOutline: true, particles: true, idleMin: 6, idleMax: 14, bubbly: true, bounce: 1, flourish: .7, smoothAction: true, adaptive: true };
 const FRAMINGS = ['full', 'upper', 'face'];
+const EMOTE_GRACE = 2.5;   // a sentence mood is kept this long past its nominal end while she is still speaking (covers the gap to the next sentence)
 const MORPHS = ['Fcl_BRW_Surprised', 'Fcl_EYE_Surprised'], MORPH_IDX = { Fcl_BRW_Surprised: 0, Fcl_EYE_Surprised: 1 };
 // friendly idle flourishes (poses / dances of the studio page). victory + grumpy stay mood-only; listen belongs to hearing.
 const FLOURISH = ['idol-step', 'nyan', 'catwalk', 'groove', 'peace', 'wave', 'shy', 'kyun', 'shrug', 'hmm', 'pouting-think', 'jojo', 'bow'];
@@ -184,7 +185,8 @@ export async function createSpace(host, opts = {}) {
 
   const camPos = new THREE.Vector3(0, 1.2, 4), camTgt = new THREE.Vector3(0, .9, 0), goalPos = new THREE.Vector3(0, 1.2, 4), goalTgt = new THREE.Vector3(0, .9, 0);
   const tmpV = new THREE.Vector3();
-  let W = 1, Hh = 1, camSnap = true;
+let W = 1, Hh = 1, camSnap = true;
+  let qScale = 1, fpsCap = 0;   // adaptive quality: render-scale multiplier and an automatic 30 fps cap (see frame())
   // user camera: orbit (az/el), zoom multiplier and pan, all relative to the current framing preset; t* = target, c* = smoothed
   const uc = { az: 0, el: 0, zoom: 1, px: 0, py: 0, caz: 0, cel: 0, czoom: 1, cpx: 0, cpy: 0, orbit: false, active: 0 };
   const frameBase = { d: 4, ey: .4, cy: .9 };
@@ -202,7 +204,7 @@ export async function createSpace(host, opts = {}) {
   function resize() {
     if (dead) return;
     W = Math.max(1, host.clientWidth || 300); Hh = Math.max(1, host.clientHeight || 150);
-    renderer.setPixelRatio(O.pixelRatio); renderer.setSize(W, Hh, false);
+    renderer.setPixelRatio(O.pixelRatio * qScale); renderer.setSize(W, Hh, false);
     camera.aspect = W / Hh; camera.updateProjectionMatrix(); post.resize(); computeFraming();
   }
   let ro = null;
@@ -229,6 +231,8 @@ export async function createSpace(host, opts = {}) {
     drop: 2,
     k(key, x, y, z) { const a = KEYMAP[key]; if (!a) return; for (let j = 0; j < a.length; j++) { const i = a[j], m = SLOTS[i].m; tgt[i * 3] = x; tgt[i * 3 + 1] = y * m; tgt[i * 3 + 2] = z * m; } },
     a(key, x, y, z) { const a = KEYMAP[key]; if (!a) return; for (let j = 0; j < a.length; j++) { const i = a[j], m = SLOTS[i].m; tgt[i * 3] += x; tgt[i * 3 + 1] += y * m; tgt[i * 3 + 2] += z * m; } },
+    get(key) { const a = KEYMAP[key]; if (!a) return null; const i = a[0], m = SLOTS[i].m; return [tgt[i * 3], tgt[i * 3 + 1] * m, tgt[i * 3 + 2] * m]; },
+    getHip() { return [hipT[0], hipT[1], hipT[2]]; },
     hip(x, y, z) { hipT[0] = x; hipT[1] = y; hipT[2] = z; },
     hipA(x, y, z) { hipT[0] += x; hipT[1] += y; hipT[2] += z; },
     f(side, name) { const p = Array.isArray(name) ? name : (FP[name] || FP.Relaxed); if (side !== 'R') fTgt[0].set(p); if (side !== 'L') fTgt[1].set(p); },
@@ -251,6 +255,11 @@ export async function createSpace(host, opts = {}) {
 
   /* ---- animation state ---- */
   let simT = 0, snapNext = false;
+  // Mood blending: when the owner of the face changes (e.g. sad -> happy) the emotional expression weights are cross-faded from what
+  // was showing to the new target over EMO_BLEND seconds, so a sad sentence followed by a happy one eases through the middle
+  // instead of snapping to full happy. emoFrom = what was on the face at the switch.
+  const EMO_BLEND = 1.4, EMO = ['happy', 'angry', 'sad', 'relaxed', 'surprised'].map((n) => EXI[n]);
+  const emoFrom = new Float32Array(EXN.length); let emoT0 = -99;
   let speaking = false, listening = false, hearing = false, hearT0 = 0, calm = reduceMotion(), talkOwn = false, ownerKey = '', forceTalkUntil = 0;
   let tb = 0, lb = 0, mouthFresh = 0, energy = 0, prevEnergy = 0;
   const mouth = { open: 0, low: 0, mid: 0, high: 0 };
@@ -265,7 +274,10 @@ export async function createSpace(host, opts = {}) {
   let exitPromise = null, poseCount = 0;
 
   function chopInterval() { const c = String(O.chop); return c === '2' ? 1 / 12 : c === '3' ? 1 / 8 : CHOP_MIXED[(Math.random() * 4) | 0]; }
-  const chopOn = () => { const c = String(O.chop); return c !== 'off' && c !== 'false' && c !== '0'; };
+  const chopSetting = () => { const c = String(O.chop); return c !== 'off' && c !== 'false' && c !== '0'; };
+  // The Spider-Verse stepping is kept for ambient idle, but never while the Saint talks, acts or changes pose: sample-and-hold on
+  // a 1.2 Hz wave, a mouth beat or a pose blend reads as stutter, not style.
+  const chopOn = () => chopSetting() && !(O.smoothAction && (speaking || tb > .05 || mouthFresh || emoteSt || idleSt || trans.from || hearing || simT < forceTalkUntil));
 
   /* ---------------------------------------------------------------- pose evaluation */
   function resolveFrame() {
@@ -342,14 +354,16 @@ export async function createSpace(host, opts = {}) {
      springy hop + bouncy knees + follow-through that fire ONLY when the pose changes and decay in ~1 s, plus an eased slerp
      (short hold, overshoot, tiny squash pulse) from the last visible pose into the new one. Steady-state motion is untouched. */
   const BUB = { t0: -99, k: 1 }, JS = { y: 0, v: 0 }, KS = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
-  const trans = { from: null, t0: 0, hold: .1, dur: .85 };
+  const trans = { from: null, t0: 0, hold: .1, dur: .85, soft: false };
   const lastH = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), qa = new THREE.Quaternion(), ea = new THREE.Euler();
   let lastHas = false;
   function stepSprings(dt) {
     const n = Math.max(1, Math.ceil(dt / .008)), h = dt / n;
     for (let i = 0; i < n; i++) {
       JS.v += (-170 * JS.y - 10 * JS.v) * h; JS.y += JS.v * h;
-      for (const a of ['x', 'y', 'z']) { KS['v' + a] += (-120 * KS[a] - 8 * KS['v' + a]) * h; KS[a] += KS['v' + a] * h; }
+      KS.vx += (-120 * KS.x - 8 * KS.vx) * h; KS.x += KS.vx * h;
+      KS.vy += (-120 * KS.y - 8 * KS.vy) * h; KS.y += KS.vy * h;
+      KS.vz += (-120 * KS.z - 8 * KS.vz) * h; KS.z += KS.vz * h;
     }
   }
   function react(kind, energyVal) {
@@ -379,14 +393,19 @@ export async function createSpace(host, opts = {}) {
   }
   function beginTrans() {
     if (!lastHas) return;
-    trans.from = { q: BLEND.map((b) => b.q.clone()), h: lastH.clone() }; trans.t0 = simT;
+    // while she is talking the switch is gentle: no freeze, no overshoot, no squash pulse (those are for deliberate poses)
+    const soft = !!(speaking || tb > .2);
+    trans.soft = soft; trans.hold = soft ? .02 : .1; trans.dur = soft ? .6 : .85;
+    if (trans.from) { for (let i = 0; i < BLEND.length; i++) trans.from.q[i].copy(BLEND[i].q); trans.from.h.copy(lastH); }
+    else trans.from = { q: BLEND.map((b) => b.q.clone()), h: lastH.clone() };
+    trans.t0 = simT;
   }
   function blend() {
     const h = model.hips;
     if (trans.from) {
       const e = (simT - trans.t0 - trans.hold) / trans.dur, w = Math.min(1, Math.max(0, e));
-      const k = O.bubbly ? 1 + 2.2 * (w - 1) ** 3 + 1.2 * (w - 1) ** 2 : w * w * (3 - 2 * w);
-      if (model.vrm) model.vrm.scene.scale.setScalar(O.bubbly ? 1 + .03 * Math.sin(w * Math.PI * 2.5) * (1 - w) : 1);
+      const bub = O.bubbly && !trans.soft, k = bub ? 1 + 2.2 * (w - 1) ** 3 + 1.2 * (w - 1) ** 2 : w * w * (3 - 2 * w);
+      if (model.vrm) model.vrm.scene.scale.setScalar(bub ? 1 + .03 * Math.sin(w * Math.PI * 2.5) * (1 - w) : 1);
       for (let i = 0; i < BLEND.length; i++) { const b = BLEND[i], f = trans.from.q[i]; if (f) { tmpQ.copy(b.node.quaternion); b.node.quaternion.copy(f).slerp(tmpQ, k); } }
       if (h) h.position.lerpVectors(trans.from.h, h.position, k);
       if (e >= 1) { trans.from = null; if (model.vrm) model.vrm.scene.scale.setScalar(1); }
@@ -406,7 +425,8 @@ export async function createSpace(host, opts = {}) {
   }
   function ownerChanged(key) {
     const first = ownerKey === ''; ownerKey = key;
-    if (first || seq) { trans.from = null; return; }
+    if (first || seq) { trans.from = null; emoT0 = -99; return; }
+    for (const i of EMO) emoFrom[i] = exC[i]; emoT0 = simT;
     beginTrans(); const oi = ownerInfo(); react(oi.react, oi.energy);
   }
 
@@ -435,13 +455,16 @@ export async function createSpace(host, opts = {}) {
     } else energy += (0 - energy) * Math.min(1, dt * 6);
     mouthFresh = fresh ? 1 : 0;
     exO.set(exT);
+    // cross-fade the emotional expressions from the previous face to the new one (smoothstep over EMO_BLEND s)
+    const eb = sstep(0, EMO_BLEND, simT - emoT0);
+    if (eb < 1) for (const i of EMO) exO[i] = emoFrom[i] + (exO[i] - emoFrom[i]) * eb;
     if (exAvail[IAA]) exO[IAA] = Math.max(exO[IAA], vA); if (exAvail[IIH]) exO[IIH] = Math.max(exO[IIH], vI);
     if (exAvail[IOU]) exO[IOU] = Math.max(exO[IOU], vU); if (exAvail[IEE]) exO[IEE] = Math.max(exO[IEE], vE); if (exAvail[IOH]) exO[IOH] = Math.max(exO[IOH], vO);
     if (exAvail[IBL]) exO[IBL] = Math.max(exO[IBL], auto * (1 - Math.min(1, own)));
     for (let i = 0; i < EXN.length; i++) {
       if (!exAvail[i]) continue;
       const vis = i >= IAA && i <= IOH;
-      const k = Math.min(1, dt * (vis ? 22 : i === IBL ? 40 : 10));
+      const k = Math.min(1, dt * (vis ? 22 : i === IBL ? 40 : 7));
       exC[i] += (exO[i] - exC[i]) * k;
       em.setValue(EXN[i], exC[i]);
     }
@@ -565,8 +588,8 @@ export async function createSpace(host, opts = {}) {
       if (energy > .3 && prevEnergy <= .3 && beatCool <= 0 && Math.random() < .6) beat(.5 + energy);
     }
     prevEnergy = energy;
-    // emote expiry
-    if (emoteSt && simT >= emoteSt.until) emoteSt = null;
+    // emote expiry (a spoken sentence's mood survives the gap to the next sentence instead of dropping to neutral and back)
+    if (emoteSt && simT >= emoteSt.until + ((speaking && !emoteSt.idle) ? EMOTE_GRACE : 0)) emoteSt = null;
     if (seq) {
       seq.tt = (simT - seq.t0) / seq.scale;
     }
@@ -634,14 +657,29 @@ export async function createSpace(host, opts = {}) {
     const usePost = O.ink || O.halftone || O.edges;
     if (usePost) post.render(scene, camera); else renderer.render(scene, camera);
   }
+  // Adaptive quality: if the device cannot keep up, lower the render scale first (cheap, barely visible with the ink / halftone look),
+  // then fall back to 30 fps. A steady 30 fps looks smoother than an uneven 40. Never raises again until the next enter().
+  let adaptAcc = 0, adaptN = 0, adaptT = 0, adaptGrace = 3;
+  function adapt(dt, now) {
+    if (!O.adaptive || hidden || seq) { adaptAcc = adaptN = 0; return; }
+    adaptAcc += dt; adaptN++;
+    if (adaptAcc < 1.5) return;
+    const fps = adaptN / adaptAcc, want = fpsCap || O.fps; adaptAcc = adaptN = 0;
+    if (adaptGrace > 0) { adaptGrace -= 1.5; return; }       // ignore shader compilation / first frames
+    if (now - adaptT < 2500 || fps >= want * .8) return;
+    adaptT = now;
+    if (qScale > .56) { qScale = Math.max(.55, qScale - .15); resize(); emit('quality', { scale: +qScale.toFixed(2), fps: Math.round(fps) }); }
+    else if (!fpsCap && want > 30) { fpsCap = 30; emit('quality', { scale: +qScale.toFixed(2), fpsCap: 30, fps: Math.round(fps) }); }
+  }
   function frame(now) {
     raf = 0; if (!wantRun()) return;
     raf = requestAnimationFrame(frame);
-    const min = 1000 / O.fps - 2.5;
+    const min = 1000 / (fpsCap || O.fps) - 2.5;
     if (lastFrameMs && now - lastFrameMs < min) return;
     const dt = lastFrameMs ? Math.min((now - lastFrameMs) / 1000, .1) : 1 / 60;
     lastFrameMs = now;
     step(dt); render();
+    adapt(dt, now);
     fpsAcc += dt; fpsN++;
     if (now - fpsT0 > 2000) { if (fpsT0) emit('fps', { fps: Math.round(fpsN / fpsAcc), frameMs: +(fpsAcc / fpsN * 1000).toFixed(1) }); fpsT0 = now; fpsAcc = 0; fpsN = 0; }
   }
@@ -747,7 +785,9 @@ export async function createSpace(host, opts = {}) {
     if (name === 'idle') { emoteSt = null; forceTalkUntil = 0; return; }
     if (name === 'talk') { forceTalkUntil = simT + hold; emoteSt = null; return; }
     if (name === 'dance') name = DANCE_NAMES[(Math.random() * DANCE_NAMES.length) | 0];
-    emoteSt = { name, t0: simT, until: simT + Math.max(.2, +hold || 3) };
+    const until = simT + Math.max(.2, +hold || 3);
+    if (emoteSt && emoteSt.name === name && !emoteSt.idle && simT < emoteSt.until + EMOTE_GRACE) { emoteSt.until = Math.max(emoteSt.until, until); return; }   // same mood again: keep it running
+    emoteSt = { name, t0: simT, until };
   }
 
   Object.assign(space, {
@@ -765,7 +805,7 @@ export async function createSpace(host, opts = {}) {
       startSeq('intro');
       // first frame: already below the floor, no flash of the rest pose
       snapNext = true; seq.tt = 0; resolveFrame(); applyPose(1 / 60); snapNext = false; model.vrm.update(0);
-      camSnap = true; poseDt = 0; chopAcc = 0; camReset(true); hearing = false; trans.from = null; ownerKey = '';
+      camSnap = true; poseDt = 0; chopAcc = 0; camReset(true); qScale = 1; fpsCap = 0; adaptGrace = 3; resize(); hearing = false; trans.from = null; ownerKey = '';
       emit('ready', { name: name || (space.info && space.info.name) || '' });
       render();
       return new Promise((res) => { seqResolve = res; });
@@ -808,12 +848,12 @@ export async function createSpace(host, opts = {}) {
         if (k === 'fps') v = +v === 30 ? 30 : 60;
         if (k === 'framing') v = FRAMINGS.includes(v) ? v : 'full';
         if (k === 'bounce') v = Math.min(2, Math.max(0, +v || 0));
-        if (k === 'bubbly') v = !!v;
+        if (k === 'bubbly' || k === 'smoothAction' || k === 'adaptive') v = !!v;
         if (k === 'pixelRatio') { v = Math.min(3, Math.max(.5, +v || 1)); }
         O[k] = v;
       }
       post.uniforms.edge.value = O.edges ? 1 : 0; post.uniforms.ht.value = O.halftone ? 1 : 0; post.uniforms.ink.value = O.ink ? 1 : 0;
-      post.uniforms.sh.value = chopOn() ? 1.5 : 0;
+      post.uniforms.sh.value = chopSetting() ? 1.5 : 0;
       env.setNeon(O.neon); env.setParticles(O.particles ? 1 : 0); applyToon();
       if ('pixelRatio' in p) resize(); else computeFraming();
       if ('framing' in p) camReset(false);   // a new preset starts from a clean view (the camera glides there)
@@ -829,8 +869,9 @@ export async function createSpace(host, opts = {}) {
     advance(seconds = 1, { render: doRender = true } = {}) { if (dead) return; const n = Math.max(1, Math.round(seconds * 30)); for (let i = 0; i < n; i++) step(1 / 30); if (doRender) render(); },
     poseNow(name, seconds = 1.6) { if (dead) return; emote(name, { hold: 1e6 }); space.advance(seconds); },
     triggerIdle,
+    boneQuat(name) { const b = bn(name); return b ? b.quaternion.toArray() : null; },
     state() { return { simT, emote: emoteSt && emoteSt.name, idle: idleSt && idleSt.def.name, seq: seq && seq.kind, speaking, listening, hidden, flip: model.flip, h: model.h,
-      drop: model.drop, hipsY: hipC[1], expr: Array.from(exC).map((x) => +x.toFixed(2)), exprNames: EXN.filter((n, i) => exAvail[i]), libs: source, chop: O.chop, poseCount, owner: ownerKey, hearing, calm, talkOwn, gaze: gzMode, morph: Array.from(morphC).map((x) => +x.toFixed(2)), faceMorphs: !!model.faceMesh, cam: space.getCamera(), bubbly: O.bubbly, transitioning: !!trans.from }; },
+      drop: model.drop, hipsY: hipC[1], expr: Array.from(exC).map((x) => +x.toFixed(2)), exprNames: EXN.filter((n, i) => exAvail[i]), libs: source, chop: O.chop, poseCount, owner: ownerKey, hearing, calm, talkOwn, gaze: gzMode, morph: Array.from(morphC).map((x) => +x.toFixed(2)), faceMorphs: !!model.faceMesh, cam: space.getCamera(), bubbly: O.bubbly, transitioning: !!trans.from, soft: trans.soft, pr: renderer.getPixelRatio(), fpsCap }; },
     dispose() {
       if (dead) return; dead = true; stopLoop();
       if (autoPauseT) clearTimeout(autoPauseT);
