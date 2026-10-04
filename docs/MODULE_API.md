@@ -85,3 +85,18 @@ Whisper = `@huggingface/transformers` v3 (`pipeline('automatic-speech-recognitio
 `Cathedra.generate({... images:[...], audios:[{pcm:'<base64 of little-endian float32 mono 16 kHz samples>'}] })`: each audio becomes one
 `<__media__>` marker + `mtmd_bitmap_init_from_audio` bitmap in the user turn, exactly like images. Everything lives behind `#ifdef CATHEDRAI_VISION`.
 Manifest gets RECORD_AUDIO, MODIFY_AUDIO_SETTINGS and the `<queries>` entries for TTS_SERVICE / RecognitionService.
+
+## v0.6 changes
+Space: see SPACE_NOTES "v0.6 additions". Ears: `start({ sensitivity, noise:'off'|'light'|'medium'|'strong', near:0..1, ..., onDrop(why:'far'|'noise') })`, `setNoise(level)`, `setNear(v)`, `forgetNear()`, `getNearInfo()`. dsp.js exports `Denoiser`, `NR_LEVELS`; `Vad` takes `near` and has `setNear / forgetNear`.
+
+## v0.6.1 changes (voice)
+`live/voice.js`: two engines, `engine()` -> `'piper' | 'kitten' | 'system' | 'none'`.
+```js
+Voice.loadSaintVoice({ onnx, config, name })                                   // Piper (unchanged)
+Voice.loadSaintVoice({ onnx, kind:'kitten', voices /*voices.bin*/, tokens /*tokens.txt string|Blob*/, name })  // KittenTTS (sherpa-onnx packaging)
+Voice.inspectKitten(onnx) -> null | { sample_rate, speakers:[{id,name}], comment, version, espeak }          // reads ONNX metadata only
+Voice.setEmotion(on, strength /*0..1.5*/)
+Voice.speak(text, { speaker, speed, volume, mood /* happy|sad|angry|... see live/emotion.js */, onStart })
+```
+New pure modules: `live/kitten.js` (ONNX metadata reader, tokens.txt, ids = [0, ...phonemes, 0], style row), `live/emotion.js` (`prosodyFor(mood, strength)`, presets in `MOOD_VOICE`).
+Speaker choice: Hub -> Saint voice stores `voices[i].spk`; a personality may override it (`P.spkOn` + `P.speaker`); `spkOf(P)` resolves it.

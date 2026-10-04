@@ -1,6 +1,6 @@
 // Ears: microphone capture, human-voice detection, dictation, and the Whisper "hearing module".
 // Contract: docs/MODULE_API.md section 3. Pure DSP lives in dsp.js (unit-tested in node).
-import { Vad, FRAME, SR, Resampler, isHallucination } from './dsp.js';
+import { Vad, FRAME, SR, Resampler, isHallucination, Denoiser, NR_LEVELS } from './dsp.js';
 
 /* ---------------------------------------------------------------- microphone manager (shared by live talk and dictation) */
 const WORKLET = `class CaCap extends AudioWorkletProcessor{constructor(){super();this.b=new Float32Array(1024);this.n=0}
@@ -8,7 +8,7 @@ process(i){const c=i[0]&&i[0][0];if(c){for(let k=0;k<c.length;k++){this.b[this.n
 registerProcessor('ca-cap',CaCap);`;
 
 const mic = {
-  subs: new Set(), stream: null, ctx: null, node: null, src: null, sink: null, rs: null, acc: new Float32Array(FRAME * 8), accN: 0, opening: null,
+  subs: new Set(), dn: new Denoiser({ floor: NR_LEVELS.medium }), stream: null, ctx: null, node: null, src: null, sink: null, rs: null, acc: new Float32Array(FRAME * 8), accN: 0, opening: null,
   async open() {
     if (this.ctx) return;
     if (this.opening) return this.opening;
@@ -55,7 +55,9 @@ const mic = {
     this.acc.set(y, this.accN); this.accN += y.length;
     let p = 0;
     while (this.accN - p >= FRAME) {
-      const fr = this.acc.subarray(p, p + FRAME);
+      // one denoised copy shared by every subscriber (live listening and dictation); a voice segment being open freezes the noise estimate
+      const speaking = [...this.subs].some((s) => s.vad && s.vad.active);
+      const fr = this.dn.process(this.acc.subarray(p, p + FRAME), speaking);
       for (const s of this.subs) s.frame(fr);
       p += FRAME;
     }
@@ -84,7 +86,7 @@ function makeSub(vad, cb) {
       if (!r) return;
       if (r.type === 'start') cb.onSpeechStart && cb.onSpeechStart();
       else if (r.type === 'end') cb.onSpeechEnd && cb.onSpeechEnd({ pcm: r.pcm, seconds: r.seconds, peak: r.peak });
-      else if (r.type === 'drop') cb.onDrop && cb.onDrop();
+      else if (r.type === 'drop') cb.onDrop && cb.onDrop(r.far ? 'far' : 'noise');
     }
   };
 }
@@ -171,9 +173,10 @@ const whisper = {
 
 /* ---------------------------------------------------------------- public API */
 export const Ears = {
-  async start({ sensitivity = 0.5, onSpeechStart, onSpeechEnd, onLevel, onError, onDrop } = {}) {
+  async start({ sensitivity = 0.5, noise = 'medium', near = 0.5, onSpeechStart, onSpeechEnd, onLevel, onError, onDrop } = {}) {
     if (live) this.stop();
-    const vad = new Vad({ sensitivity });
+    this.setNoise(noise); mic.dn.reset();
+    const vad = new Vad({ sensitivity, near });
     live = makeSub(vad, { onSpeechStart, onSpeechEnd, onLevel, onError, onDrop });
     await mic.add(live);
   },
@@ -183,11 +186,17 @@ export const Ears = {
   isActive() { return !!live && !live.paused; },
   isOpen() { return !!live; },
   setSensitivity(v) { if (live) live.vad.setSensitivity(v); },
+  // noise reduction: 'off' | 'light' | 'medium' | 'strong'
+  setNoise(level) { mic.dn.setLevel(NR_LEVELS[level] === undefined ? 'medium' : level); },
+  // near-voice gate: 0 = off .. 1 = strict (only the voice that is close and loud enough counts); forgetNear() re-learns who is "near"
+  setNear(v) { if (live) live.vad.setNear(v); },
+  forgetNear() { if (live) live.vad.forgetNear(); },
+  getNearInfo() { return live ? { refDb: live.vad.refDb, nowDb: live.vad.dbNow, far: live.vad.lastFar, on: live.vad.nearOn } : null; },
   setEchoGuard(g) { if (live) { live.vad.setEchoGuard(g); } },
   getInLevel() { return live ? live.vad.level : { rms: 0, bands: new Float32Array(16) }; },
   // dictation: wait for the first real utterance, stop after `silenceSeconds`
   async recordOnce({ maxSeconds = 30, silenceSeconds = 1.2, onLevel, startTimeout = 12, signal } = {}) {
-    const vad = new Vad({ sensitivity: live ? live.vad.sens : 0.55, hangMs: silenceSeconds * 1000, maxSeconds });
+    const vad = new Vad({ sensitivity: live ? live.vad.sens : 0.55, hangMs: silenceSeconds * 1000, maxSeconds, near: 0 });
     return new Promise(async (resolve, reject) => {
       let done = false, t0 = null;
       const fin = (v, err) => { if (done) return; done = true; clearTimeout(t0); sub && mic.remove(sub); signal && signal.removeEventListener('abort', ab); err ? reject(err) : resolve(v); };

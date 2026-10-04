@@ -43,3 +43,9 @@ In code: `NEON/PLAIN/GREY` (space-env.js) colours; `CHOP_MIXED`; framing factors
 ## Not verified
 - Real VRoid models (VRM0 exports from VRoid Studio, MToon outlines, hair springbones, real expression binds such as VRoid `happy` closing the eyes), real GPU and Android WebView (half-float render target fallback to UInt8 sRGB is coded but untested), Capacitor asset server, CDN fallback (blocked here; the real three-vrm CDN build may import `three/examples/jsm/...` or `three/webgpu`, only the first is handled), actual TTS audio feeding `setMouth`.
 - Poses were tuned on a box-figure fixture; arm/hand contact (chin, hip, face) may need small per-model tweaks on real proportions.
+
+## v0.6 additions
+- `space-anim.js`: studio-page animation data + adapter. `space-poses.js` aliases moods onto it; `EMOTES` now also lists the studio names and `dance`.
+- New Space methods: `setHearing(on)` (cupped-ear pose while the user talks), `setCalm(on)` (breathing-only base; default on with prefers-reduced-motion), `setOrbit(on)`, `resetCamera(snap)`, `cameraRotate(dx,dy)`, `cameraZoom(f)`, `cameraPan(dx,dy)`, `getCamera()`. `setFraming('face'|'upper'|'full')`. Options `bubbly` (bool), `bounce` (0..2). Event `camera` on double-tap reset.
+- Body ownership: seq (intro/exit) > emote (sentence mood / idle flourish) > idle bit > talk > hearing > standby (curious idle). Any change starts a bubbly eased transition; steady motion is untouched.
+- `state()` additionally returns owner, hearing, calm, gaze, morph, faceMorphs, cam, bubbly, transitioning.

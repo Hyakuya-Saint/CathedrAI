@@ -63,6 +63,69 @@ export class Resampler {
   }
 }
 
+/* ---------- noise reduction (v0.6): streaming Wiener-style spectral gate, 512 window / 256 hop, sqrt-Hann WOLA ----------
+   Per-bin noise power is tracked (fast down, slow up, frozen while a voice segment is open), the gain is a decision-directed
+   Wiener filter smoothed over frequency and time, and never goes below `floor` (default -14 dB), so it is a "somewhat"
+   reduction: steady hiss / fans / hum / traffic drop clearly, speech keeps its natural sound for the recogniser.
+   Latency: 256 samples (16 ms). Input and output frames are FRAME (512) samples. */
+const HOP = FRAME / 2;
+const SQH = (() => { const w = new Float32Array(FRAME); for (let i = 0; i < FRAME; i++) w[i] = Math.sqrt(0.5 - 0.5 * Math.cos(2 * Math.PI * i / FRAME)); return w; })();
+export const NR_LEVELS = { off: 0, light: 0.35, medium: 0.2, strong: 0.12 };   // gain floor per level
+export class Denoiser {
+  constructor(o = {}) {
+    this.floor = o.floor ?? NR_LEVELS.medium; this.enabled = this.floor < 1 && !o.off;
+    const K = FRAME / 2 + 1;
+    this.inb = new Float32Array(FRAME); this.ola = new Float32Array(FRAME);
+    this.re = new Float32Array(FRAME); this.im = new Float32Array(FRAME);
+    this.N = new Float32Array(K).fill(NaN); this.G = new Float32Array(K).fill(1); this.Xp = new Float32Array(K);
+    this.g2 = new Float32Array(K); this.init = 0; this.out = new Float32Array(FRAME);
+  }
+  setLevel(name) { const f = NR_LEVELS[name]; if (f === undefined) return; this.enabled = f > 0; if (f > 0) this.floor = f; }
+  // x: Float32Array(FRAME); speaking = a voice segment is open (freezes the noise estimate). Returns Float32Array(FRAME) (reused buffer).
+  process(x, speaking) {
+    const out = this.out;
+    if (!this.enabled) { out.set(x); return out; }
+    const K = FRAME / 2 + 1, re = this.re, im = this.im, N = this.N, G = this.G, Xp = this.Xp, g2 = this.g2, fl = this.floor;
+    for (let h = 0; h < 2; h++) {
+      this.inb.copyWithin(0, HOP); this.inb.set(x.subarray(h * HOP, (h + 1) * HOP), HOP);
+      for (let i = 0; i < FRAME; i++) { re[i] = this.inb[i] * SQH[i]; im[i] = 0; }
+      fft(re, im);
+      const warm = this.init < 24;
+      for (let k = 0; k < K; k++) {
+        const p = re[k] * re[k] + im[k] * im[k] + 1e-12;
+        if (Number.isNaN(N[k])) N[k] = p;
+        if (warm) N[k] += (Math.min(p, N[k] * 4) - N[k]) / (this.init + 2);
+        else if (p < N[k]) N[k] += (p - N[k]) * 0.05;
+        else if (!speaking) N[k] += (Math.min(p, N[k] * 3) - N[k]) * 0.035;
+        const Nn = N[k] * 1.5 + 1e-12;                       // slight over-estimate: random noise peaks stay below the gate
+        const gam = p / Nn;
+        const xi = 0.9 * (Xp[k] / Nn) + 0.1 * Math.max(gam - 1, 0);
+        g2[k] = Math.max(fl, xi / (1 + xi));
+      }
+      if (warm) this.init++;
+      // smooth across frequency (3 taps), limit how fast the gain can fall (no pumping), floor the sub-60 Hz rumble
+      for (let k = 0; k < K; k++) {
+        let g = (g2[Math.max(0, k - 1)] + 2 * g2[k] + g2[Math.min(K - 1, k + 1)]) / 4;
+        if (k < 2) g = fl;
+        g = g < G[k] ? Math.max(g, G[k] * 0.6) : g;
+        G[k] = g;
+      }
+      for (let k = 0; k < K; k++) {
+        re[k] *= G[k]; im[k] *= G[k]; Xp[k] = (re[k] * re[k] + im[k] * im[k]);
+        if (k > 0 && k < FRAME / 2) { re[FRAME - k] = re[k]; im[FRAME - k] = -im[k]; }
+      }
+      // inverse FFT via conjugate trick
+      for (let i = 0; i < FRAME; i++) im[i] = -im[i];
+      fft(re, im);
+      for (let i = 0; i < FRAME; i++) this.ola[i] += (re[i] / FRAME) * SQH[i];
+      out.set(this.ola.subarray(0, HOP), h * HOP);
+      this.ola.copyWithin(0, HOP); this.ola.fill(0, HOP);
+    }
+    return out;
+  }
+  reset() { this.inb.fill(0); this.ola.fill(0); this.Xp.fill(0); this.G.fill(1); }
+}
+
 /* ---------- voice activity detector ---------- */
 const HANN = (() => { const w = new Float32Array(FRAME); for (let i = 0; i < FRAME; i++) w[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (FRAME - 1)); return w; })();
 const BIN = SR / FRAME;                       // 31.25 Hz per bin
@@ -89,7 +152,16 @@ export class Vad {
     this.level = { rms: 0, bands: new Float32Array(16) };
     this.last = { snr: 0, period: 0, flat: 1, speech: false };
     this.mag = new Float32Array(FRAME / 2);
+    // near/far voice gate (v0.6): the level of the voice that has been talking to us is remembered (refDb, dBFS rms of voiced frames);
+    // frames far below it (a TV across the room, someone in the next room) do not count as speech, and a segment whose voiced
+    // frames sit far below it is dropped. `near` 0 = off, 1 = strict. The reference relaxes slowly if the speaker moves away.
+    this.near = o.near ?? 0.5; this.refDb = NaN; this.segDb = []; this.lastFar = false;
+    this.dbNow = -90;
   }
+  setNear(v) { this.near = Math.max(0, Math.min(1, +v || 0)); }
+  forgetNear() { this.refDb = NaN; }
+  get margin() { return 20 - 14 * this.near; }   // dB below the reference that still counts as "near"
+  get nearOn() { return this.near > 0.02 && !Number.isNaN(this.refDb); }
   setSensitivity(s) { this.sens = Math.max(0, Math.min(1, s)); }
   setEchoGuard(g) { this.echoGuard = !!g; }
   get active() { return !!this.seg; }
@@ -156,7 +228,11 @@ export class Vad {
     const pth = 0.5 - (s - 0.5) * 0.2 + (g ? 0.1 : 0);
     const voiced = (snr > lo && f.period > pth && f.flat < 0.55) || (snr > lo - 5 && f.period > 0.72 && f.flat < 0.4);
     const fric = snr > hi + 6 && f.flat < 0.7 && f.period > 0.25;      // loud, not white, some structure
-    const speech = this.init >= 16 && (voiced || fric);
+    let speech = this.init >= 16 && (voiced || fric);
+    const db = 20 * Math.log10(f.rms + 1e-9); this.dbNow = db;
+    if (this.nearOn) this.refDb -= 0.0002;                           // ~0.4 dB per minute of drift back down
+    this.lastFar = false;
+    if (speech && this.nearOn && db < this.refDb - this.margin && !g) { speech = false; this.lastFar = true; }
     this.last.snr = snr; this.nfv = this.nf[0]; this.last.period = f.period; this.last.flat = f.flat; this.last.speech = speech;
     if (f.peak > this.peak) this.peak = f.peak;
     const copy = () => { const c = new Float32Array(FRAME); c.set(x); return c; };
@@ -166,21 +242,26 @@ export class Vad {
       this.ring.push(copy()); if (this.ring.length > this.preroll + openN) this.ring.shift();
       this.run = speech ? this.run + 1 : Math.max(0, this.run - 1);
       if (this.run >= openN) {
-        this.seg = this.ring.slice(); this.ring.length = 0; this.silence = 0; this.voiced = this.run; this.peak = f.peak; this.run = 0;
+        this.seg = this.ring.slice(); this.ring.length = 0; this.silence = 0; this.voiced = this.run; this.peak = f.peak; this.run = 0; this.segDb.length = 0; this.segDb.push(db);
         for (const fr of this.seg) for (let i = 0; i < FRAME; i++) { const a = Math.abs(fr[i]); if (a > this.peak) this.peak = a; }
         return { type: 'start' };
       }
       return null;
     }
     this.seg.push(copy());
-    if (speech) { this.silence = 0; this.voiced++; } else this.silence++;
+    if (speech) { this.silence = 0; this.voiced++; if (voiced) this.segDb.push(db); } else this.silence++;
     const tooLong = this.seg.length * FRAME / SR >= this.maxSeconds;
     if (this.silence >= hang || tooLong) {
       const keep = this.seg.length - (tooLong ? 0 : Math.max(0, this.silence - 8)); // keep ~250 ms of tail
       const frames = this.seg.slice(0, Math.max(1, keep));
       const voicedN = this.voiced, pk = this.peak;
       this.seg = null; this.silence = 0; this.voiced = 0; this.run = 0; this.peak = 0;
-      if (voicedN < 11 || pk < 0.004) return { type: 'drop' };
+      if (voicedN < 11 || pk < 0.004) { this.segDb.length = 0; return { type: 'drop' }; }
+      // loudness of the utterance = 75th percentile of its voiced frames (robust against soft word endings)
+      const sd = this.segDb.slice().sort((a, b) => a - b), segLvl = sd.length ? sd[Math.floor(sd.length * 0.75)] : -90; this.segDb.length = 0;
+      if (this.nearOn && segLvl < this.refDb - this.margin && !g) return { type: 'drop', far: true };
+      // learn / follow the near voice (only confident speech: enough voiced frames, above a minimal level)
+      if (voicedN >= 14 && segLvl > -55) this.refDb = Number.isNaN(this.refDb) ? segLvl : (segLvl > this.refDb ? 0.5 : 0.25) * segLvl + (segLvl > this.refDb ? 0.5 : 0.75) * this.refDb;
       const pcm = new Float32Array(frames.length * FRAME);
       frames.forEach((fr, i) => pcm.set(fr, i * FRAME));
       return { type: 'end', pcm, seconds: pcm.length / SR, peak: pk, cut: tooLong };

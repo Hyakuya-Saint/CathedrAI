@@ -19,6 +19,7 @@ FAKE = r"""
  loadModel(o){P._calls.push(['load',o]);return Promise.resolve({ok:true,ctx:o.nCtx||4096,audio:true,vision:false})},
  unloadModel(){P._calls.push(['unload']);return Promise.resolve({ok:true})},
  stopGeneration(){P._stop=true;return Promise.resolve()},
+ httpGet(o){P._calls.push(['http',o.url]);if(/duckduckgo/.test(o.url))return Promise.resolve({ok:true,body:'<div class="result"><a class="result__a" href="https://example.com/a">Result A</a><div class="result__snippet">Snippet about the weather</div></div><div class="result"><a class="result__a" href="https://example.com/b">Result B</a><div class="result__snippet">More snippet</div></div><div class="result"><a class="result__a" href="https://example.com/c">Result C</a><div class="result__snippet">Third</div></div>'});return Promise.resolve({ok:true,body:'<html><body><article>'+'Long page text about the weather today. '.repeat(30)+'</article></body></html>'})},
  getDiagnostics(){return Promise.resolve({nativeLog:'',info:{}})},
  async generate(o){P._calls.push(['gen',o]);P._stop=false;
   const last=[...o.messages].reverse().find(m=>m.role=='user')||{content:''};const t=String(last.content);
@@ -115,6 +116,36 @@ with sync_playwright() as p:
     um = pg.evaluate("C.m.filter(m=>m.r=='u').pop()"); check('heard transcript captured', 'nerd' in (um.get('t') or ''), um.get('t'))
     st = pg.evaluate("_space.state?_space.state():null"); L('space state ' + json.dumps(st)[:200])
     pg.wait_for_timeout(5000)
+    # --- v0.6: web search works in the live space (voice message -> words -> search -> spoken answer)
+    pg.wait_for_function("!busy", timeout=20000)
+    pg.evaluate("web='blend';nav()")
+    nh0 = pg.evaluate("Capacitor.Plugins.Cathedra._calls.filter(c=>c[0]=='http').length")
+    pg.evaluate("""()=>{const n=16000*2,pcm=new Float32Array(n);for(let i=0;i<n;i++)pcm[i]=0.4*Math.sin(2*Math.PI*180*i/16000)*(0.5+0.5*Math.sin(2*Math.PI*3*i/16000));liveHeard({pcm,seconds:2})}""")
+    pg.wait_for_timeout(1200)
+    chip = pg.evaluate("document.getElementById('lvchip').textContent"); L('chip while searching: ' + chip)
+    pg.wait_for_function("!busy", timeout=25000)
+    calls = pg.evaluate("Capacitor.Plugins.Cathedra._calls")
+    https = [c for c in calls if c[0] == 'http'][nh0:]
+    check('live voice turn searched the web', len(https) >= 2 and any('duckduckgo' in c[1] and 'q=' in c[1] and len(c[1].split('q=')[1]) > 8 for c in https), [c[1][:70] for c in https][:3])
+    gens = [c[1] for c in calls if c[0] == 'gen']
+    last = gens[-1]; um2 = [m for m in last['messages'] if m['role'] == 'user'][-1]['content']
+    check('web results reach the model with the spoken-answer instruction', 'Web results fetched' in um2 and 'out loud' in um2 and 'Result A' in um2, um2[-160:].replace('\n', ' '))
+    check('a transcript-only pre-pass produced the query', any(g.get('maxTokens') == 64 for g in gens))
+    pg.evaluate("web='off';nav()")
+    nh1 = pg.evaluate("Capacitor.Plugins.Cathedra._calls.filter(c=>c[0]=='http').length")
+    pg.evaluate("""()=>{const n=16000*2,pcm=new Float32Array(n);for(let i=0;i<n;i++)pcm[i]=0.4*Math.sin(2*Math.PI*180*i/16000);liveHeard({pcm,seconds:2})}""")
+    pg.wait_for_timeout(1500); pg.wait_for_function("!busy", timeout=25000)
+    check('web off: no search', pg.evaluate("Capacitor.Plugins.Cathedra._calls.filter(c=>c[0]=='http').length") == nh1)
+    # --- v0.6: camera in the live space
+    pg.evaluate("lvCam('face')"); pg.wait_for_timeout(300); check('Face button sets face focus', pg.evaluate("_space.getOptions().framing") == 'face')
+    pg.evaluate("lvCam('orbit')"); check('Orbit button toggles', pg.evaluate("_space.getCamera().orbit") is True); pg.evaluate("lvCam('orbit')")
+    box = pg.locator('#stagehost canvas').bounding_box(); cx, cy = box['x'] + box['width'] / 2, box['y'] + box['height'] / 2
+    pg.mouse.move(cx, cy); pg.mouse.down(); pg.mouse.move(cx + 90, cy + 20, steps=6); pg.mouse.up(); pg.wait_for_timeout(300)
+    check('dragging the stage turns the camera', abs(pg.evaluate("_space.getCamera().az")) > .3, pg.evaluate("JSON.stringify(_space.getCamera())")[:100])
+    pg.screenshot(path=SH + '/app_live_cam.png')
+    pg.evaluate("lvCam('reset');lvCam('full')"); pg.wait_for_timeout(300)
+    check('hub shows v0.6 settings', True)
+    pg.evaluate("vxOpt('nr','strong');vxOpt('near',0.85)"); check('noise/near settings stored', pg.evaluate("vxo.nr=='strong'&&vxo.near==0.85"))
     pg.click('#lvx'); pg.wait_for_timeout(5000)
     check('live off', pg.evaluate("!LV.on && !document.body.classList.contains('lvmode')"))
     pg.screenshot(path=SH + '/app_after.png')

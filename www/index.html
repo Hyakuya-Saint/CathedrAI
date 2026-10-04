@@ -151,6 +151,12 @@ body.lvmode #view{opacity:0;pointer-events:none}
 #lvchip.l{color:#7df}#lvchip.h{color:var(--gold)}#lvchip.t{color:#c9a0ff}#lvchip.s{color:#6fd08c}#lvchip.e{color:#ff8a96}
 #lvx{position:absolute;right:12px;top:10px;background:#000a;border:1px solid var(--ln);border-radius:99px;padding:6px 14px;font-size:12px;z-index:2}
 #lvx:hover{border-color:var(--red)}
+#lvcam{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:5px;z-index:2}
+#lvcam button{background:#000a;border:1px solid var(--ln);border-radius:99px;padding:5px 12px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#cfd6e4;backdrop-filter:blur(4px);cursor:pointer;text-align:left}
+#lvcam button.on{border-color:var(--gold);color:var(--gold)}#lvcam button:hover{border-color:#7df}
+#lvhint{position:absolute;left:0;right:0;top:46%;text-align:center;font-size:12px;color:#cfd6e4;letter-spacing:.04em;text-shadow:0 1px 6px #000;opacity:0;transition:opacity .6s;pointer-events:none;padding:0 70px}
+#lvhint.show{opacity:.85}
+#stagehost canvas{cursor:grab}#stagehost canvas:active{cursor:grabbing}
 #lvcap{position:absolute;left:0;right:0;bottom:10px;padding:0 16px;text-align:center;pointer-events:none;text-shadow:0 1px 6px #000}
 #lvu{color:#9ab;font-size:13px;font-style:italic;min-height:1.2em;margin-bottom:4px}
 #lvs{color:#fff;font-size:16px;line-height:1.4;max-width:720px;margin:0 auto;max-height:5.6em;overflow:hidden}
@@ -170,7 +176,7 @@ body.lvmode #view{opacity:0;pointer-events:none}
 <div id="main">
 <header><button class="ib" id="tg"></button><div class="slot" id="slot"></div><button class="sb" id="sel" onclick="savMenu(this)"></button><button class="ib pw" id="pwr" onclick="pwrClick()"></button><span style="flex:1"></span><button class="ib" id="newc"></button></header>
 <div id="view"></div>
-<div id="stage"><div id="stagehost"></div><div id="lvchip"></div><button id="lvx" onclick="liveExit()"></button><div id="lvcap"><div id="lvu"></div><div id="lvs"></div></div></div>
+<div id="stage"><div id="stagehost"></div><div id="lvchip"></div><div id="lvcam"><button data-c="face" onclick="lvCam('face')">Face</button><button data-c="upper" onclick="lvCam('upper')">Upper</button><button data-c="full" onclick="lvCam('full')">Full</button><button data-c="orbit" onclick="lvCam('orbit')">Orbit</button><button data-c="reset" onclick="lvCam('reset')">Reset</button></div><div id="lvhint"></div><button id="lvx" onclick="liveExit()"></button><div id="lvcap"><div id="lvu"></div><div id="lvs"></div></div></div>
 <div id="bar"><div class="box"><div id="ban"></div><textarea id="in" rows="1" placeholder="Command your Saint…"></textarea>
 <div class="row"><button class="ib" id="att" onclick="atMenu(this)"></button><button class="sb" id="sty" onclick="styMenu(this)"></button><button class="sb" id="fb" onclick="facMenu(this)"></button><button class="ib gb" id="web" onclick="webMenu(this)" title="Web search"></button>
 <span class="sp"></span><button class="ib" id="mic"></button><button class="ib" id="live"></button><button class="send" id="send"></button></div></div></div>
@@ -486,7 +492,7 @@ async function webResearch(q,mode,F,say){const deep=mode=='deep',budget=Math.flo
  snips.forEach((r,i)=>{cx+=`[${i+1}] ${r.title}\n${r.url}\n${(r.snip||'').slice(0,sb)}\n`+(r.page?`Page text: ${r.page}\n`:'')+'\n'});
  dlog('web',`${mode} q="${q}" results=${res.length} pages=${n} ctxChars=${cx.length} ${Date.now()-t0}ms`);
  return{mode,q,cx:cx.slice(0,budget),src:snips.map(r=>({title:r.title,url:r.url}))}}
-function webPrompt(w){const d=new Date().toDateString();return `\n\n[Web results fetched ${d} for "${w.q}"]\n${w.cx}\n[End of web results]\n`+(w.mode=='deep'?'Write an in-depth analysis from these results: a short overview, then sections for the main findings, disagreements or uncertainties between sources, and a conclusion. Cite sources as [1], [2] after the claims they support. Do not invent facts that are not in the results.':'Answer using these results. Cite sources as [1], [2] after the claims they support. If the results do not contain the answer, say so.')}
+function webPrompt(w,live){const d=new Date().toDateString();return `\n\n[Web results fetched ${d} for "${w.q}"]\n${w.cx}\n[End of web results]\n`+(live?'Answer out loud from these results in one to three short spoken sentences. Do not read out web addresses and do not write citation numbers; you may say where something came from in words, for example "according to the BBC". If the results do not contain the answer, say so plainly.':w.mode=='deep'?'Write an in-depth analysis from these results: a short overview, then sections for the main findings, disagreements or uncertainties between sources, and a conclusion. Cite sources as [1], [2] after the claims they support. Do not invent facts that are not in the results.':'Answer using these results. Cite sources as [1], [2] after the claims they support. If the results do not contain the answer, say so.')}
 const openUrl=u=>{try{CA().openUrl({url:u})}catch(e){window.open(u,'_blank')}};
 /* ---------- canvas: documents, slides, web apps ---------- */
 const CV_RULES=`CANVAS MODE. The person wants the result built in a separate canvas tab, not pasted in the chat. Write one short sentence, then exactly one fenced block, and nothing after it.
@@ -574,7 +580,7 @@ function histMsgs(ms,F,extra,wctx){const lu=[...ms].reverse().find(m=>m.r=='u'),
  const add=(role,content)=>{const l=out[out.length-1];if(l.role==role)l.content+='\n\n'+content;else out.push({role,content})};
  ms.forEach((m,k)=>{if(m.err||m.greet)return;
   if(m.r=='u'){let t=m.t||(m.voice?'(voice message)':'');for(const a of m.a||[]){if(a.text!=null)t+=`\n\n[Attached file: ${a.name}]\n${a.text.slice(0,cap)}${a.text.length>cap?'\n[…truncated]':''}`;else if(a.kind=='image')t+=`\n\n[Attached image: ${a.name}]`;else t+=`\n\n[Attached: ${a.name}. ${a.note||'This kind of file cannot be read yet.'}]`}
-   if(k==ms.length-1&&wctx)t+=webPrompt(wctx);add('user',t.trim()?t:'(empty)')}
+   if(k==ms.length-1&&wctx)t+=webPrompt(wctx,window.LV&&LV.on);add('user',t.trim()?t:'(empty)')}
   else if(m.t&&m.t!='Stopped.')add('assistant',m.cv?m.t+'\n```'+(m.cv.kind=='doc'?'canvas-doc':m.cv.kind=='slides'?'canvas-slides':'html')+'\n'+m.cv.src+'\n```':m.t)});
  return out}
 async function ensureLoaded(am,say){const F=FAC[fac],thr=cfg.threads||0,pj=am.projPath||'';
@@ -598,13 +604,19 @@ const AUD=new WeakMap();
 const LIVE_RULES=`LIVE VOICE CONVERSATION. You are speaking out loud and your words are read aloud by a voice, so talk like a person: short, natural spoken sentences, usually one to three of them. No markdown, no lists, no headings, no emojis, no code blocks, no URLs read out. Do not describe actions in asterisks. You may change mood in the middle of a reply by writing a mood tag such as [happy], [pout], [angry], [sad], [surprised], [smug], [love], [wink], [confused], [scared], [excited] before the sentence it belongs to; tags are never spoken. Stay in character.`;
 const HEARD_RULE=`The user's message is a voice recording. Begin your reply with <heard>the exact words the user said, as plain text</heard> and then answer normally. If the recording has no clear human speech, reply with <heard></heard> and nothing else.`;
 async function ask(q,at,files,opt){if(busy)return;opt=opt||{};const live=!!opt.live;if(at==null&&!q.trim()&&!(files&&files.length)&&!opt.pcm)return;
- const c=C,F=FAC[fac],mode=live?'Markdown':sty,wm=live?'off':web;setBusy(true);stop=false;clearTimeout(idleT);clearTimeout(tt);
+ const c=C,F=FAC[fac],mode=live?'Markdown':sty,wm=live&&web=='deep'?'blend':web;setBusy(true);stop=false;clearTimeout(idleT);clearTimeout(tt);
  const LX=window.LVx||{};
  if(at==null){const fl=(files||[]).slice();let um0={r:'u',t:q,a:fl};
   if(opt.pcm){const at0={name:'Voice message',kind:'audio',size:opt.pcm.length*4,note:(opt.pcm.length/16000).toFixed(1)+' s'};AUD.set(at0,opt.pcm);fl.push(at0);um0.voice=1}
   c.m.push(um0);if(c.t=='New chat')c.t=(q||(fl[0]&&fl[0].kind=='audio'?'Voice chat':fl[0]&&fl[0].name)||'Chat').slice(0,28)}
  const idx=at??c.m.length,m={r:'a',t:'',status:'Preparing…',live:true,sty:mode,voice:live?1:0};c.m[idx]=m;nav();if(!live)render();
  const upd=()=>{if(!live&&C==c&&view=='chat')updMsg(idx)};let first=true,raw='',tagDone=false,mood=null;
+ const st2=s=>{m.status=s;upd();if(live&&LX.status)LX.status(s)};
+ /* words of a voice message, only needed for the web query: the hearing module when installed, else the Saint's own ears in a tiny transcript-only pass */
+ const preHear=async pcm=>{try{if((wsum()||{}).model){const t=await LVx.transcribe(pcm);if(t)return t}}catch(e){}
+  let buf='';const prev=curGen;curGen={on:t=>{buf+=t},pre:()=>{}};
+  try{await CA().generate({messages:[{role:'system',content:'Transcribe the audio exactly. Reply with only the words that were spoken, nothing else.'},{role:'user',content:'(voice message)'}],temp:0,topP:1,topK:1,repeat:1,maxTokens:64,seed:-1,images:[],audios:[{pcm:f32b64(pcm)}]})}catch(e){dlog('web','pre-hear failed: '+e.message)}
+  curGen=prev;return buf.replace(/<\/?heard>/g,'').replace(/\s+/g,' ').trim()};
  const um=c.m[idx-1];
  const aud=um&&(um.a||[]).find(a=>a.kind=='audio'&&AUD.get(a));
  let heardMode=false;
@@ -619,11 +631,6 @@ async function ask(q,at,files,opt){if(busy)return;opt=opt||{};const live=!!opt.l
   mood=guessMood((um&&um.t)||'');setEmo(mood||'think');
   if(live&&LX.replyStart)LX.replyStart();
   await bgWait();
-  let wctx=null;
-  if(wm!='off'&&um&&um.r=='u'){if(at!=null&&um.web&&um.web.mode==wm)wctx=um.web;else{const qq=(um.t||'').replace(/^>.*\n+/gm,'').trim().slice(0,220);
-    if(qq){try{wctx=await webResearch(qq,wm,F,s=>{m.status=s;upd()});um.web=wctx}catch(e){dlog('web','failed: '+e.message);toast('Web search failed: '+e.message);m.status='Web search failed, answering without it…';upd()}}}}
-  if(wctx)m.src=wctx.src;
-  if(stop)throw new UserErr('Stopped.');
   await ensureLoaded(am,s=>{m.status=s;upd()});
   if(LX.noteAudio&&loaded&&loaded.info)LX.noteAudio(am.id,!!loaded.info.audio);
   if(stop)throw new UserErr('Stopped.');
@@ -636,6 +643,16 @@ async function ask(q,at,files,opt){if(busy)return;opt=opt||{};const live=!!opt.l
     tx=(tx||'').trim();if(!tx)throw new UserErr(live?'(I could not make out any words.)':'I could not make out any words in that recording.');
     um.t=tx;if(LX.heard)LX.heard(tx);if(!live&&C==c&&view=='chat')render()}}
   else if(at!=null&&um&&um.voice&&!um.t)throw new UserErr('That voice message is no longer in memory, so it cannot be answered again. Record it again.');
+  /* web search. For a voice message the words are only known after hearing, so this runs after the hearing step (v0.6 fix:
+     it used to run first with an empty query, so nothing was ever searched in the live space). */
+  let wctx=null;
+  if(wm!='off'&&um&&um.r=='u'){if(at!=null&&um.web&&um.web.mode==wm)wctx=um.web;else{
+    let qtext=(um.t||'').replace(/^>.*\n+/gm,'').trim();
+    if(!qtext&&aud){m.status='Working out what to search for…';st2(m.status);qtext=((await preHear(AUD.get(aud)))||'').trim();if(qtext&&live&&LX.heard)LX.heard(qtext)}
+    const qq=qtext.slice(0,220);
+    if(qq){try{wctx=await webResearch(qq,wm,F,s=>st2(s));wctx.live=live;um.web=wctx}catch(e){dlog('web','failed: '+e.message);toast('Web search failed: '+e.message);st2('Web search failed, answering without it…')}}}}
+  if(wctx)m.src=wctx.src;
+  if(stop)throw new UserErr('Stopped.');
   const extra=(mode=='Canvas'?CV_RULES:'')+(live?'\n\n'+LIVE_RULES:'')+(heardMode?'\n\n'+HEARD_RULE:'');
   const hist=histMsgs(c.m.slice(0,idx),F,extra,wctx);m.status='Reading your message…';upd();
   const imgs=(loaded&&loaded.info.vision&&um)?(um.a||[]).filter(a=>a.kind=='image'&&a.rgb).slice(0,4).map(a=>({w:a.rgb.w,h:a.rgb.h,rgb:a.rgb.b64})):[];

@@ -7,18 +7,30 @@
 // Each pose is fn(t, S, extra) with S = the writer API supplied by space.js:
 //   S.k(key,x,y,z) set | S.a(key,x,y,z) add | S.hip(x,y,z) hips offset in metres | S.f(side,'Fist') finger preset
 //   S.e(name, weight) expression target | S.look(bool) keep eyes on camera | S.drop = metres to hide the model under the floor
+import { ANIM, ANIM_NAMES, DANCE_NAMES, FING_PRESETS } from './space-anim.js';
+// v0.6: the poses/dances/expressions of the user's VRoid Anime Studio page (space-anim.js) now drive the live space.
+//   The moods that page has an equivalent for are aliased to it (think->hmm, happy->idol-step, love->kyun, pout->grumpy,
+//   confused->shrug, excited->victory, wink->peace). sad / angry / surprised / sleepy / smug / scared / dizzy have no
+//   counterpart there, so their original poses stay (now with the brow morphs, gaze and bubbly layer added).
 const sn = Math.sin, cs = Math.cos, abs = Math.abs, PI = Math.PI;
 const sat = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const sstep = (a, b, x) => { const t = sat((x - a) / (b - a)); return t * t * (3 - 2 * t); };
 const eob = (u) => { const c1 = 1.70158, c3 = c1 + 1; u = sat(u) - 1; return 1 + c3 * u * u * u + c1 * u * u; };
 
-export const EMOTES = ['idle', 'think', 'talk', 'happy', 'sad', 'angry', 'pout', 'confused', 'surprised', 'sleepy', 'love', 'wink', 'smug', 'scared', 'excited', 'dizzy'];
+export const EMOTES = ['idle', 'think', 'talk', 'happy', 'sad', 'angry', 'pout', 'confused', 'surprised', 'sleepy', 'love', 'wink', 'smug', 'scared', 'excited', 'dizzy',
+  ...ANIM_NAMES, 'dance'];
+export const EMOTE_ALIAS = { think: 'hmm', happy: 'idol-step', love: 'kyun', pout: 'grumpy', confused: 'shrug', excited: 'victory', wink: 'peace' };
+export { ANIM, ANIM_NAMES, DANCE_NAMES };
+// bubbly layer data for the poses that kept their original code
+export const LEGACY_ENERGY = { sad: .15, angry: .5, surprised: .6, sleepy: .1, smug: .25, scared: .35, dizzy: .4, talk: .25 };
+export const LEGACY_REACT = { sad: 'Sorrow', angry: 'Angry', surprised: 'Surprise', sleepy: 'Neutral', smug: 'Fun', scared: 'Surprise', dizzy: 'Fun', talk: 'tiny' };
 
 // finger curl presets: index, middle, ring, little, thumb (0 open .. 1 closed)
 export const FP = {
   Relaxed: [.22, .28, .34, .4, .2], Open: [0, 0, 0, 0, 0], Fist: [1, 1, 1, 1, .8], Loose: [.55, .6, .65, .7, .4],
   V: [0, 0, 1, 1, .7], Claws: [.45, .45, .45, .45, .3], Heart: [.55, .55, .8, .8, .35], Point: [0, 1, 1, 1, .7],
   Chin: [.5, .5, .5, .5, .3], Splay: [0, 0, 0, 0, 0], Rock: [0, 1, 1, 0, 0],
+  ...FING_PRESETS,
 };
 
 export const POSE = {
@@ -158,6 +170,25 @@ export const POSE = {
     S.f('B', 'Splay'); S.e('blinkLeft', .95); S.e('sad', .35); S.e('ou', .25); S.look(false);
   },
 };
+
+// ------------------------------------------------------------------ index.html animations (and the moods aliased onto them)
+const via = (slug, extra) => (t, S) => { ANIM[slug].fn(t, S); if (extra) for (const k in extra) S.e(k, extra[k]); };
+for (const n of ANIM_NAMES) POSE[n] = via(n);
+POSE.think = via('hmm');
+POSE.happy = via('idol-step', { happy: .9 });
+POSE.love = via('kyun', { relaxed: .2 });
+POSE.pout = via('grumpy', { ou: .4 });
+POSE.confused = via('shrug');
+POSE.excited = (t, S) => { ANIM.victory.fn(t, S); S.e('happy', .85); S.e('aa', .25 + .2 * sn(t * 11)); };
+POSE.wink = via('peace');
+POSE.standby = (t, S) => ANIM.curious.fn(t, S);   // ambient life: the seeded 7-minute "curious" attention script
+POSE.calm = (t, S) => ANIM.breath.fn(t, S);       // muted / reduced-motion base: gentle breathing only
+POSE.dance = (t, S) => ANIM['groove'].fn(t, S);   // replaced by a random dance in space.js (emote('dance'))
+// brows / eye-widen morphs for the legacy poses that read as shock or worry (no effect on models without those morphs)
+{ const sur = POSE.surprised, sca = POSE.scared, sad = POSE.sad;
+  POSE.surprised = (t, S) => { sur(t, S); S.m('Fcl_BRW_Surprised', .85); S.m('Fcl_EYE_Surprised', .35); };
+  POSE.scared = (t, S) => { sca(t, S); S.m('Fcl_BRW_Surprised', .7); S.m('Fcl_EYE_Surprised', .25); };
+  POSE.sad = (t, S) => { sad(t, S); S.m('Fcl_BRW_Surprised', .25); }; }
 
 // ------------------------------------------------------------------ idle animations (random, when left alone)
 const wave = (t, S, who = 'R') => {

@@ -17,7 +17,7 @@ const PFEAT = [
 ];
 function newPersona(n) {
   const on = {}; PFEAT.forEach(f => on[f[0]] = 1);
-  return { n: n || 'New personality', d: '', av: '✨', p: '', greet: '', traits: '', style: '', story: '', scene: '', avoid: '', lore: '', loreMode: 'smart', docs: [], ex: [], user: { n: '', d: '' }, mem: { on: false, every: 8, state: '', slots: [], at: 0 }, vessel: '', voice: '', speaker: 0, speed: 1, on };
+  return { n: n || 'New personality', d: '', av: '✨', p: '', greet: '', traits: '', style: '', story: '', scene: '', avoid: '', lore: '', loreMode: 'smart', docs: [], ex: [], user: { n: '', d: '' }, mem: { on: false, every: 8, state: '', slots: [], at: 0 }, vessel: '', voice: '', speaker: 0, spkOn: false, speed: 1, on };
 }
 function defaultPersona() { const P = newPersona('Default'); P.builtin = 1; P.av = '⛪'; P.d = 'The built-in Saint'; P.p = PDEF_PROMPT; P.p0 = PDEF_PROMPT; return P; }
 /* old saves stored six ranks; keep what the person had customised as ordinary personalities */
@@ -34,7 +34,7 @@ function personaMigrate() {
   }
   if (!PR.def) PR = { def: defaultPersona(), ...PR };
   PR.def.builtin = 1; PR.def.p0 = PDEF_PROMPT;
-  for (const k in PR) { const d = newPersona(); const P = PR[k]; for (const f in d) if (P[f] === undefined) P[f] = d[f]; P.on = { ...d.on, ...P.on }; P.mem = { ...d.mem, ...P.mem }; P.user = { ...d.user, ...P.user }; }
+  for (const k in PR) { const d = newPersona(); const P = PR[k]; if (P.spkOn === undefined) P.spkOn = (P.speaker | 0) > 0; for (const f in d) if (P[f] === undefined) P[f] = d[f]; P.on = { ...d.on, ...P.on }; P.mem = { ...d.mem, ...P.mem }; P.user = { ...d.user, ...P.user }; }
   if (!PR[prof]) prof = 'def';
 }
 const P_ = () => PR[prof] || PR.def;
@@ -137,7 +137,7 @@ ${pcard(P, 'lore', `${ta('lore', 5, 'Facts about the world, rules, names, places
 ${pcard(P, 'ex', `<div id="pex">${pExHtml(P)}</div><button class="btn g" onclick="pAddEx()">${ic('plus', 16)}Add example</button>`)}
 ${pcard(P, 'user', `<input style="width:100%" placeholder="Your name" value="${esc(P.user.n)}" oninput="P_().user.n=this.value;save();pMeter()"><textarea style="width:100%;margin-top:8px" rows="3" placeholder="Who you are, what you like, how it should treat you" oninput="P_().user.d=this.value;save();pMeter()">${esc(P.user.d)}</textarea>`)}
 ${pcard(P, 'avoid', ta('avoid', 3, 'Never break character. Never discuss real-world politics.', P.avoid))}
-${pcard(P, 'bind', `<label>3D vessel</label>${sel('v', vs, P.vessel, "pIn('vessel',this.value)", 'Use the appointed vessel')}<label>Voice</label>${sel('o', vo, P.voice, "pIn('voice',this.value);render()", 'Use the appointed voice')}${vo0 && vo0.speakers && vo0.speakers.length > 1 ? `<label>Speaker</label><select style="width:100%" onchange="pIn('speaker',+this.value)">${vo0.speakers.map(s => `<option value="${s.id}" ${P.speaker == s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` : ''}<label>Speaking speed: <b id="v_spd">${(P.speed || 1).toFixed(2)}×</b></label><input type="range" min=".6" max="1.6" step=".05" value="${P.speed || 1}" oninput="pIn('speed',+this.value);document.getElementById('v_spd').textContent=(+this.value).toFixed(2)+'×'">`)}
+${pcard(P, 'bind', `<label>3D vessel</label>${sel('v', vs, P.vessel, "pIn('vessel',this.value)", 'Use the appointed vessel')}<label>Voice</label>${sel('o', vo, P.voice, "pIn('voice',this.value);render()", 'Use the appointed voice')}${vo0 && vo0.speakers && vo0.speakers.length > 1 ? `<label>Speaker</label><select style="width:100%" onchange="pSpk(this.value)"><option value="" ${P.spkOn ? '' : 'selected'}>Voice default (${esc((vo0.speakers.find(s => s.id === (vo0.spk | 0)) || vo0.speakers[0]).name)})</option>${vo0.speakers.map(s => `<option value="${s.id}" ${P.spkOn && P.speaker == s.id ? 'selected' : ''}>${s.id} · ${esc(s.name)}</option>`).join('')}</select>` : ''}<label>Speaking speed: <b id="v_spd">${(P.speed || 1).toFixed(2)}×</b></label><input type="range" min=".6" max="1.6" step=".05" value="${P.speed || 1}" oninput="pIn('speed',+this.value);document.getElementById('v_spd').textContent=(+this.value).toFixed(2)+'×'">`)}
 <div class="card pc ${P.mem.on ? '' : 'off'}" id="pc_mem"><h4>Save state<small style="margin-left:auto"><label class="sw2"><input type="checkbox" ${P.mem.on ? 'checked' : ''} onchange="pMemTog(this.checked)"><i></i></label></small></h4>
 <p class="hint" style="margin:2px 0 6px">Lets this personality remember you between chats. Every few messages the Saint quietly rewrites a short memory note. It costs a little battery and time (about 200 tokens per save, only while idle, never during live talk), so it is off by default.</p>
 <div class="pbody" ${P.mem.on ? '' : 'style="display:none"'}>
@@ -156,6 +156,7 @@ function pMeter() {
   if (m) m.textContent = `This personality adds about ${t} tokens to every message (${Math.round(pct)}% of the ${F.ctx}-token Context size).` + (pct > 45 ? ' That is a lot: raise Context size or trim sections.' : '');
   if (b) { b.style.width = pct + '%'; b.style.background = pct > 45 ? 'var(--glow)' : ''; }
 }
+function pSpk(v) { const P = P_(); if (v === '') P.spkOn = false; else { P.spkOn = true; P.speaker = +v; } save(); }
 function pIn(k, v) { P_()[k] = v; if (k === 'greet' || k === 'on') { /* applies to the next empty chat */ } save(); pMeter(); if (k === 'n' || k === 'av') nav(); }
 function pTog(k, on) { const P = P_(); P.on[k] = on ? 1 : 0; const c = $('#pc_' + k); if (c) { c.classList.toggle('off', !on); c.querySelector('.pbody').style.display = on ? '' : 'none'; } if (k === 'greet') ensureGreeting(C); save(); pMeter(); }
 function pMemTog(on) { const P = P_(); P.mem.on = !!on; const c = $('#pc_mem'); c.classList.toggle('off', !on); c.querySelector('.pbody').style.display = on ? '' : 'none'; save(); pMeter(); }
