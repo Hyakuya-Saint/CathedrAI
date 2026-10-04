@@ -33,10 +33,11 @@ final class LlamaBridge {
 
     static native boolean nVisionCompiled();
 
-    /** Returns a JSON object with statistics, or {"ok":false,"error":"..."}. Blocks until finished. */
+    /** audios: raw little-endian float32 mono 16 kHz PCM, one byte[] per clip. Returns a JSON object with statistics, or {"ok":false,"error":"..."}. Blocks until finished. */
     static native String nGenerate(String[] roles, byte[][] contents, float temp, float topP, int topK,
                                    float repeatPenalty, int maxNew, int seed,
-                                   byte[][] imgs, int[] imgW, int[] imgH, Callback cb);
+                                   byte[][] imgs, int[] imgW, int[] imgH,
+                                   byte[][] audios, Callback cb);
 
     static native void nStop();
 

@@ -630,8 +630,21 @@ public class CathedraPlugin extends Plugin {
             call.resolve(err("Bad image data: " + msg(t)));
             return;
         }
+        // audios: [{pcm: base64 of little-endian float32 mono 16 kHz samples}]
+        final JSArray audArr = call.getArray("audios");
+        final int nAud = audArr == null ? 0 : audArr.length();
+        final byte[][] ab = new byte[nAud][];
+        try {
+            for (int i = 0; i < nAud; i++) {
+                JSONObject o = audArr.getJSONObject(i);
+                ab[i] = android.util.Base64.decode(o.getString("pcm"), android.util.Base64.DEFAULT);
+            }
+        } catch (Throwable t) {
+            call.resolve(err("Bad audio data: " + msg(t)));
+            return;
+        }
         llm.execute(() -> {
-            final String op = Diag.begin("generate (" + n + " messages, " + nImg + " images)");
+            final String op = Diag.begin("generate (" + n + " messages, " + nImg + " images, " + nAud + " audio)");
             keepAwake(true);
             try {
                 if (!LlamaBridge.loaded) { call.resolve(err("Engine library is not loaded.")); return; }
@@ -652,7 +665,7 @@ public class CathedraPlugin extends Plugin {
                         notifyListeners("prefill", o);
                     }
                 };
-                String json = LlamaBridge.nGenerate(roles, contents, temp, topP, topK, rep, maxTok, seed, ib, iw, ih, cb);
+                String json = LlamaBridge.nGenerate(roles, contents, temp, topP, topK, rep, maxTok, seed, ib, iw, ih, ab, cb);
                 call.resolve(new JSObject(json));
             } catch (Throwable t) {
                 Diag.log("engine", "generate FAILED " + t);

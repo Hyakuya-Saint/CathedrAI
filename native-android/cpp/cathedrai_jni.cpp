@@ -17,6 +17,7 @@
 #include <chrono>
 #include <cstdarg>
 #include <cstdio>
+#include <cstdint>
 #include <cstring>
 #include <ctime>
 #include <exception>
@@ -44,6 +45,7 @@ static std::string g_arch;               // general.architecture of the loaded m
 static bool g_img_dirty = false;         // KV cache holds image embeddings that g_cache cannot describe
 static llama_token g_stop_tok = LLAMA_TOKEN_NULL;   // <turn|> for Gemma 4
 static bool g_vision = false;            // a vision projector (mmproj) is loaded
+static bool g_audio  = false;            // the loaded mmproj also contains an audio encoder
 #ifdef CATHEDRAI_VISION
 static mtmd_context* g_mtmd = nullptr;
 #endif
@@ -125,7 +127,7 @@ static void free_all() {
 #ifdef CATHEDRAI_VISION
     if (g_mtmd)  { mtmd_free(g_mtmd);        g_mtmd = nullptr; }
 #endif
-    g_vision = false; g_img_dirty = false; g_arch.clear(); g_stop_tok = LLAMA_TOKEN_NULL;
+    g_vision = false; g_audio = false; g_img_dirty = false; g_arch.clear(); g_stop_tok = LLAMA_TOKEN_NULL;
     if (g_ctx)   { llama_free(g_ctx);        g_ctx = nullptr; }
     if (g_model) { llama_model_free(g_model); g_model = nullptr; }
     g_cache.clear();
@@ -321,7 +323,12 @@ Java_com_cathedrai_app_LlamaBridge_nLoad(JNIEnv* env, jclass, jstring jpath, jin
             vp.use_gpu = false;
             vp.n_threads = cp.n_threads;
             g_mtmd = mtmd_init_from_file(projPath.c_str(), g_model, vp);
-            if (g_mtmd) { g_vision = true; wlog("LOAD vision projector ok: %s", projPath.c_str()); }
+            if (g_mtmd) {
+                g_vision = true;
+                g_audio = mtmd_support_audio(g_mtmd);
+                wlog("LOAD vision projector ok: %s | vision=%d audio=%d audioRate=%d", projPath.c_str(),
+                     (int)mtmd_support_vision(g_mtmd), (int)g_audio, (int)mtmd_get_audio_sample_rate(g_mtmd));
+            }
             else { visionErr = "the vision projector could not be loaded (wrong file for this model?)"; wlog("LOAD vision projector FAILED: %s", projPath.c_str()); }
         }
 #else
@@ -330,6 +337,7 @@ Java_com_cathedrai_app_LlamaBridge_nLoad(JNIEnv* env, jclass, jstring jpath, jin
         std::string j = "{\"ok\":true";
         j += ",\"arch\":\"" + jesc(g_arch) + "\"";
         j += std::string(",\"vision\":") + (g_vision ? "true" : "false");
+        j += std::string(",\"audio\":") + (g_audio ? "true" : "false");
         j += ",\"visionErr\":\"" + jesc(visionErr) + "\"";
         j += ",\"ctx\":" + std::to_string(want);
         j += ",\"train\":" + std::to_string(train);
@@ -370,7 +378,7 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_cathedrai_app_LlamaBridge_nGenerate(JNIEnv* env, jclass,
         jobjectArray roles, jobjectArray contents,
         jfloat temp, jfloat topP, jint topK, jfloat repeatPen,
-        jint maxNew, jint seed, jobjectArray imgs, jintArray imgW, jintArray imgH, jobject cb) {
+        jint maxNew, jint seed, jobjectArray imgs, jintArray imgW, jintArray imgH, jobjectArray auds, jobject cb) {
     // ---- images (RGB bytes) for the last user message
     std::vector<std::vector<unsigned char>> imgData;
     std::vector<std::pair<int,int>> imgDim;
@@ -386,6 +394,34 @@ Java_com_cathedrai_app_LlamaBridge_nGenerate(JNIEnv* env, jclass,
             if (len > 0) env->GetByteArrayRegion(jb, 0, len, reinterpret_cast<jbyte*>(d.data()));
             env->DeleteLocalRef(jb);
             if ((size_t)len == (size_t)w[i] * (size_t)h[i] * 3) { imgData.push_back(std::move(d)); imgDim.emplace_back(w[i], h[i]); }
+        }
+    }
+    // ---- audio clips (raw little-endian float32 mono 16 kHz PCM bytes) for the last user message
+    const size_t kMaxAudClips = 2, kMaxAudSamples = 480000;   // 30 s per clip
+    std::vector<std::vector<float>> audData;
+    int audSent = 0;
+    if (auds) {
+        jsize na = env->GetArrayLength(auds);
+        for (jsize i = 0; i < na; i++) {
+            jbyteArray jb = (jbyteArray)env->GetObjectArrayElement(auds, i);
+            if (!jb) continue;
+            audSent++;
+            jsize len = env->GetArrayLength(jb);
+            size_t ns = len > 0 ? (size_t)len / 4 : 0;
+            if (audData.size() >= kMaxAudClips) { wlog("GEN audio clip %d dropped (max %d clips)", (int)i, (int)kMaxAudClips); env->DeleteLocalRef(jb); continue; }
+            if (ns == 0) { wlog("GEN audio clip %d is empty, rejected", (int)i); env->DeleteLocalRef(jb); continue; }
+            if (ns > kMaxAudSamples) { wlog("GEN audio clip %d truncated from %d to %d samples", (int)i, (int)ns, (int)kMaxAudSamples); ns = kMaxAudSamples; }
+            std::vector<unsigned char> raw(ns * 4);
+            env->GetByteArrayRegion(jb, 0, (jsize)(ns * 4), reinterpret_cast<jbyte*>(raw.data()));
+            env->DeleteLocalRef(jb);
+            std::vector<float> f(ns);
+            for (size_t k = 0; k < ns; k++) {   // explicit little-endian decode, independent of host order
+                uint32_t u = (uint32_t)raw[k*4] | ((uint32_t)raw[k*4+1] << 8) | ((uint32_t)raw[k*4+2] << 16) | ((uint32_t)raw[k*4+3] << 24);
+                float v; memcpy(&v, &u, sizeof v);
+                if (!(v == v) || v > 4.0f || v < -4.0f) v = 0.0f;   // NaN / absurd values -> silence
+                f[k] = v;
+            }
+            audData.push_back(std::move(f));
         }
     }
     // ---- copy arguments out of JNI first
@@ -431,17 +467,31 @@ Java_com_cathedrai_app_LlamaBridge_nGenerate(JNIEnv* env, jclass,
         int trimmed = 0;
         bool fallback = false;
         std::string lastText;
+        if (audSent > 0 && audData.empty())
+            return to_jstring(env, jerr("The recording was empty or unreadable, nothing to listen to."));
+#ifdef CATHEDRAI_VISION
+        const bool useAud = !audData.empty() && g_audio;
+#else
+        const bool useAud = false;
+#endif
+        if (!audData.empty() && !useAud)
+            return to_jstring(env, std::string("{\"ok\":false,\"audioIgnored\":true,\"error\":\"") + jesc(
+                "This Saint cannot hear audio: the loaded vision file has no audio encoder (or this build has no multimodal support). "
+                "Use a model with an audio-capable mmproj, or use speech-to-text instead.") + "\"}");
         const bool useImg = !imgData.empty() && g_vision;
+        const bool useMedia = useImg || useAud;
         std::string imgNote;
         if (!imgData.empty() && !g_vision) imgNote = "no-vision";
         for (;;) {
             std::string text;
 #ifdef CATHEDRAI_VISION
-            if (useImg) {
-                // put one media marker per image at the start of the last user message
+            if (useMedia) {
+                // put one media marker per image, then one per audio clip, at the start of the last user message
+                // (this order must match the bitmap order given to mtmd_tokenize below)
                 for (int k = (int)msgs.size() - 1; k >= 0; k--) if (msgs[k].first == "user") {
                     std::string mk;
-                    for (size_t q = 0; q < imgData.size(); q++) mk += std::string(mtmd_default_marker()) + "\n";
+                    for (size_t q = 0; q < (useImg ? imgData.size() : 0); q++) mk += std::string(mtmd_default_marker()) + "\n";
+                    for (size_t q = 0; q < (useAud ? audData.size() : 0); q++) mk += std::string(mtmd_default_marker()) + "\n";
                     if (msgs[k].second.compare(0, mk.size(), mk) != 0) msgs[k].second = mk + msgs[k].second;
                     break;
                 }
@@ -475,12 +525,18 @@ Java_com_cathedrai_app_LlamaBridge_nGenerate(JNIEnv* env, jclass,
         bool imgDone = false;
         long long ti0 = now_ms();
 #ifdef CATHEDRAI_VISION
-        if (useImg) {
+        if (useMedia) {
             llama_memory_clear(llama_get_memory(g_ctx), true);
             g_cache.clear();
             std::vector<mtmd_bitmap*> bms;
-            for (size_t q = 0; q < imgData.size(); q++)
+            if (useImg) for (size_t q = 0; q < imgData.size(); q++)
                 bms.push_back(mtmd_bitmap_init((uint32_t)imgDim[q].first, (uint32_t)imgDim[q].second, imgData[q].data()));
+            if (useAud) for (size_t q = 0; q < audData.size(); q++)
+                bms.push_back(mtmd_bitmap_init_from_audio(audData[q].size(), audData[q].data()));
+            for (auto* b : bms) if (!b) {
+                for (auto* b2 : bms) if (b2) mtmd_bitmap_free(b2);
+                return to_jstring(env, jerr("Could not prepare the image/audio data (out of memory?)."));
+            }
             mtmd_input_chunks* chunks = mtmd_input_chunks_init();
             mtmd_input_text it;
             it.text = lastText.c_str();
@@ -489,14 +545,14 @@ Java_com_cathedrai_app_LlamaBridge_nGenerate(JNIEnv* env, jclass,
             std::vector<const mtmd_bitmap*> cb2(bms.begin(), bms.end());
             int32_t tr = mtmd_tokenize(g_mtmd, chunks, &it, cb2.data(), cb2.size());
             auto cleanup = [&]() { mtmd_input_chunks_free(chunks); for (auto* b : bms) mtmd_bitmap_free(b); };
-            if (tr != 0) { cleanup(); wlog("GEN image tokenize failed rc=%d", (int)tr); return to_jstring(env, jerr("Could not prepare the image (tokenizer code " + std::to_string(tr) + ").")); }
+            if (tr != 0) { cleanup(); wlog("GEN image tokenize failed rc=%d", (int)tr); return to_jstring(env, jerr("Could not prepare the image/audio (tokenizer code " + std::to_string(tr) + ").")); }
             size_t nTok = mtmd_helper_get_n_tokens(chunks);
-            wlog("GEN image prompt: %d images, %d tokens", (int)imgData.size(), (int)nTok);
-            if ((int)nTok > budget) { cleanup(); return to_jstring(env, jerr("The image and your message need " + std::to_string(nTok) + " tokens but only " + std::to_string(budget) + " fit. Raise Context size under Appoint Your Saint.")); }
+            wlog("GEN media prompt: %d images, %d audio clips, %d tokens", (int)(useImg ? imgData.size() : 0), (int)(useAud ? audData.size() : 0), (int)nTok);
+            if ((int)nTok > budget) { cleanup(); return to_jstring(env, jerr("The media and your message need " + std::to_string(nTok) + " tokens but only " + std::to_string(budget) + " fit. Raise Context size under Appoint Your Saint.")); }
             llama_pos newPast = 0;
             int32_t er = mtmd_helper_eval_chunks(g_mtmd, g_ctx, chunks, 0, 0, nBatch, true, &newPast);
             cleanup();
-            if (er != 0) { llama_memory_clear(llama_get_memory(g_ctx), true); wlog("GEN image eval failed rc=%d", (int)er); return to_jstring(env, jerr("The model could not read the image (code " + std::to_string(er) + "). Is the vision projector the right one for this model?")); }
+            if (er != 0) { llama_memory_clear(llama_get_memory(g_ctx), true); wlog("GEN media eval failed rc=%d", (int)er); return to_jstring(env, jerr("The model could not read the image/audio (code " + std::to_string(er) + "). Is the vision/audio projector the right one for this model?")); }
             pos = (int)newPast;
             g_img_dirty = true;
             imgDone = true;
@@ -624,6 +680,7 @@ Java_com_cathedrai_app_LlamaBridge_nGenerate(JNIEnv* env, jclass,
         j += ",\"prompt\":" + std::to_string(total);
         j += ",\"reused\":" + std::to_string(reused);
         j += ",\"trimmed\":" + std::to_string(trimmed);
+        j += std::string(",\"audioUsed\":") + (useAud ? "true" : "false");
         j += std::string(",\"imgIgnored\":") + (imgNote.empty() ? "false" : "true");
         j += ",\"msPrefill\":" + std::to_string(t1 - t0);
         j += ",\"msGen\":" + std::to_string(t2 - t1);

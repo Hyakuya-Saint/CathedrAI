@@ -1,0 +1,26 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>space test</title>
+<style>html,body{margin:0;background:#000;color:#9ab;font:12px monospace}#host{position:relative;overflow:hidden;background:#111}</style></head>
+<body><div id="host"></div><pre id="log"></pre>
+<script type="module">
+// Headless harness: ?w=480&h=640&vessel=/fixtures/test_vrm1.vrm   (driven by test/run-space-test.py via window.T)
+import { createSpace, probeVessel, EMOTES } from '../www/live/space.js';
+const q = new URLSearchParams(location.search), host = document.getElementById('host');
+host.style.width = (q.get('w') || 480) + 'px'; host.style.height = (q.get('h') || 640) + 'px';
+const errors = [], events = [];
+addEventListener('error', (e) => errors.push('error: ' + e.message));
+addEventListener('unhandledrejection', (e) => errors.push('rejection: ' + (e.reason && e.reason.message || e.reason)));
+const ce = console.error; console.error = (...a) => { errors.push('console.error: ' + a.join(' ')); ce(...a); };
+window.T = {
+  errors, events, EMOTES, probeVessel,
+  async start(url, opts) {
+    const buf = await (await fetch(url)).arrayBuffer();
+    const space = await createSpace(host, opts || {});
+    space.onevent = (t, d) => events.push([t, d, +performance.now().toFixed(0)]);
+    window.T.space = space; window.T.buf = buf;
+    return space;
+  },
+};
+document.getElementById('log').textContent = 'ready';
+window.__ready = true;
+</script></body></html>

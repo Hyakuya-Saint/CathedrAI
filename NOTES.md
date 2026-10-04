@@ -26,3 +26,15 @@ the operation that was in progress if the app died, the engine log and the UI lo
 - **Canvas**: documents (editable), slides (editable, exports a slideshow .html) and web apps (live preview + code), saved through Android's Save-as picker.
 - **BMO**: the model starts each reply with a one-word mood tag, stripped before display; a tiny keyword guess reacts to your prompt instantly.
 - Launcher icon and favicon come from `cathedral_ai_icon_512x512.png`.
+
+## v0.5 — what's new
+- Slides: real designer (themes, backgrounds, layouts, decorations, title styles, editor tabs, animated HTML export).
+- Power button beside the Saint selector (off / standby / awake; same unload as idle sleep; configurable in Hub).
+- Copy keeps bold for Word/Docs without `**`; plain and Markdown copy in the menu.
+- Hierarchy → Persona: one default + your own personalities (prompt, story, scenario, greeting, lore + docs, examples, user profile, boundaries, vessel/voice binding), every section switchable, optional save state.
+- Prompt whitespace and Shift+Enter preserved.
+- Dictation, live talk, 3D VRM space, Piper voice import, Whisper fallback hearing.
+
+## Not verified on real hardware
+Piper inference through onnxruntime-web, Whisper via transformers.js (needs internet once), Gemma 4 audio tower (detected at load: `audio` flag), real VRoid models, Android WebView mic/TTS. The CI step `scripts/vendor.mjs` bundles ONNX runtime. Piper synthesis runs on the main thread, so expect brief UI hitches while a sentence is generated.
+"Ink lines" are off by default (toggle in Hub → Live space look).

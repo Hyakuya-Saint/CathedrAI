@@ -8,7 +8,7 @@ It injects everything native into the generated project:
   * launcher icons (native-android/res)                             -> app/src/main/res
   * Gradle: NDK version, CMake hook, arm64-only, Release engine     -> app/build.gradle
   * minSdk 28 (llama.cpp needs a newer libc than Capacitor's default)-> variables.gradle
-  * manifest: camera permission + largeHeap
+  * manifest: camera + microphone permissions, <queries> for TTS/speech services, largeHeap
 The script fails loudly if any anchor is not found, so a template change in a new
 Capacitor version shows up as a clear CI error instead of a silently broken APK.
 """
@@ -27,7 +27,7 @@ TAG = os.environ.get("LLAMA_TAG", "unknown")
 NDK = os.environ.get("CATHEDRAI_NDK", "27.2.12479018")
 CMAKE = os.environ.get("CATHEDRAI_CMAKE", "3.22.1")
 LLAMA = os.path.join(ROOT, "third_party", "llama.cpp")
-VERSION = "0.3.0"
+VERSION = "0.5.0"
 
 
 def die(msg):
@@ -149,6 +149,36 @@ if "android.permission.CAMERA" not in m:
     m = m.replace("<application", '<uses-permission android:name="android.permission.CAMERA" />\n    <application', 1)
 if "android:largeHeap" not in m:
     m = m.replace("<application", '<application\n        android:largeHeap="true"', 1)
+if "<application" not in m:
+    die("no <application> tag in AndroidManifest.xml")
+
+
+def add_before_application(block):
+    """Insert a top-level manifest element just before <application (never inside it)."""
+    global m
+    m = m.replace("<application", block + "\n    <application", 1)
+
+
+for perm in ("android.permission.RECORD_AUDIO", "android.permission.MODIFY_AUDIO_SETTINGS"):
+    if perm not in m:
+        add_before_application(f'<uses-permission android:name="{perm}" />')
+if "android.hardware.microphone" not in m:
+    add_before_application('<uses-feature android:name="android.hardware.microphone" android:required="false" />')
+
+# <queries>: Android 11+ package visibility for text-to-speech and speech recognition services
+q_items = {
+    "android.intent.action.TTS_SERVICE": '<intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>',
+    "android.speech.RecognitionService": '<intent><action android:name="android.speech.RecognitionService" /></intent>',
+}
+missing = [v for k, v in q_items.items() if k not in m]
+if missing:
+    body = "\n        ".join(missing)
+    if re.search(r"<queries\s*>", m):
+        m = re.sub(r"(<queries\s*>)", lambda mo: mo.group(1) + "\n        " + body, m, count=1)
+    elif re.search(r"<queries\s*/>", m):
+        m = re.sub(r"<queries\s*/>", lambda mo: "<queries>\n        " + body + "\n    </queries>", m, count=1)
+    else:
+        add_before_application("<queries>\n        " + body + "\n    </queries>")
 write(mp, m)
 print("patched AndroidManifest.xml")
 
