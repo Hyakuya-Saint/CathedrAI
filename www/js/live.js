@@ -63,7 +63,10 @@ async function vxDelVessel(id) {
 function vxPickVessel(id) { actV = id; save(); render(); }
 
 async function vxImportVoice(files) {
-  const onnx = files.find(f => /\.onnx$/i.test(f.name)), json = files.find(f => /\.json$/i.test(f.name));
+  const onnx = files.find(f => /\.onnx$/i.test(f.name));
+  // the config belongs to the .onnx with the same name (en_GB-semaine-medium.onnx -> en_GB-semaine-medium.onnx.json); else any .json picked with it
+  const jsons = files.filter(f => /\.json$/i.test(f.name)), base = onnx ? onnx.name.replace(/\.onnx$/i, '').toLowerCase() : '';
+  const json = jsons.find(f => f.name.toLowerCase() === base + '.onnx.json') || jsons.find(f => f.name.toLowerCase().startsWith(base)) || jsons[0];
   if (!onnx) { toast('Choose the .onnx voice file (and its .onnx.json together with it).'); return; }
   try {
     let cfg = null;

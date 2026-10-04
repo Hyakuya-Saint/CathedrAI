@@ -27,7 +27,7 @@ TAG = os.environ.get("LLAMA_TAG", "unknown")
 NDK = os.environ.get("CATHEDRAI_NDK", "27.2.12479018")
 CMAKE = os.environ.get("CATHEDRAI_CMAKE", "3.22.1")
 LLAMA = os.path.join(ROOT, "third_party", "llama.cpp")
-VERSION = "0.5.0"
+VERSION = "0.5.1"
 
 
 def die(msg):

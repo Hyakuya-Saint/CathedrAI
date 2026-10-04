@@ -38,3 +38,10 @@ the operation that was in progress if the app died, the engine log and the UI lo
 ## Not verified on real hardware
 Piper inference through onnxruntime-web, Whisper via transformers.js (needs internet once), Gemma 4 audio tower (detected at load: `audio` flag), real VRoid models, Android WebView mic/TTS. The CI step `scripts/vendor.mjs` bundles ONNX runtime. Piper synthesis runs on the main thread, so expect brief UI hitches while a sentence is generated.
 "Ink lines" are off by default (toggle in Hub → Live space look).
+
+## v0.5.1 — voice engine fix
+- **Fixed** `HTTP 404 ... vendor/ort/ort-wasm-simd-threaded.wasm`: `scripts/vendor.mjs` skipped every filename containing "threaded", which is exactly the runtime file onnxruntime-web 1.20 needs. It now skips only `jsep`, `webgpu` and `training`, and **fails the build** if `ort.min.js`, `ort-wasm-simd-threaded.mjs` or `ort-wasm-simd-threaded.wasm` is missing.
+- The Web Preview workflow now also runs `npm install` + `vendor.mjs` (it used to publish `www/` without the runtime).
+- `live/voice.js`: the runtime files are checked before use (HTTP status, wasm header, not an HTML error page), local copy first then CDN, handed to ort as Blob URLs, and every start attempt uses a freshly loaded ort (ort refuses to retry after a failed start). The error now lists what each attempt hit.
+- Voice import picks the `.json` that belongs to the `.onnx` (`<name>.onnx.json`). Multi-speaker voices such as en_GB-semaine-medium (prudence, spike, obadiah, poppy) list their speakers from the config.
+- Existing imported voices stay as they are; just install the new APK.

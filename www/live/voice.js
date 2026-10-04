@@ -10,9 +10,9 @@ const DEFAULTS = { sample_rate: 22050, noise_scale: 0.667, length_scale: 1.0, no
 
 /* ---------------------------------------------------------------- small helpers */
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-function loadScript(src) {
+function loadScript(src, isOrt) {
   return new Promise((ok, no) => {
-    const s = document.createElement('script'); s.src = src; s.async = true;
+    const s = document.createElement('script'); s.src = src; s.async = true; if (isOrt) s.dataset.ort = '1';
     s.onload = () => ok(); s.onerror = () => { s.remove(); no(new Error('could not load ' + src)); };
     document.head.appendChild(s);
   });
@@ -55,13 +55,49 @@ async function phonemize(text, voice) {
 }
 
 /* ---------------------------------------------------------------- onnxruntime-web */
-let ortPromise = null, ortMode = 'prefix', ortBase = ORT_LOCAL;
-async function getOrt(mode = 'prefix') {
+// onnxruntime-web 1.20 needs three files from the same folder: ort.min.js (library), ort-wasm-simd-threaded.mjs (loader)
+// and ort-wasm-simd-threaded.wasm (engine). They are bundled in vendor/ort/ by scripts/vendor.mjs; if the app files are
+// missing the CDN copy is used instead (needs internet once).
+// ort remembers a failed start for the rest of the page, so a retry always begins with a freshly loaded library.
+let ortPromise = null, ortMode = 'blob', ortBase = ORT_LOCAL;
+const ORT_FILES = ['ort-wasm-simd-threaded.mjs', 'ort-wasm-simd-threaded.wasm'];
+
+async function fetchChecked(url, kind) {
+  const r = await fetch(url, { cache: 'no-cache' });
+  if (!r.ok) throw new Error('HTTP ' + r.status + ' for ' + url);
+  if (kind === 'wasm') {
+    const b = new Uint8Array(await r.arrayBuffer());
+    if (b.length < 1024 || b[0] !== 0 || b[1] !== 0x61 || b[2] !== 0x73 || b[3] !== 0x6d) throw new Error('not a wasm file: ' + url);
+    return b;
+  }
+  const t = await r.text();
+  if (/^\s*</.test(t)) throw new Error('got a web page instead of the script: ' + url);
+  return t;
+}
+let ortAssets = null;
+async function getOrtAssets() { // local first, CDN second; cached so the 10 MB engine is read once
+  if (ortAssets) return ortAssets;
+  let lastErr;
+  for (const base of [ORT_LOCAL, ORT_CDN]) {
+    try {
+      const [mjs, wasm] = [await fetchChecked(base + ORT_FILES[0], 'mjs'), await fetchChecked(base + ORT_FILES[1], 'wasm')];
+      ortAssets = { base, mjs, wasm }; return ortAssets;
+    } catch (e) { lastErr = e; }
+  }
+  throw new Error('onnxruntime-web files not found in the app or on the CDN (' + errText(lastErr) + ')');
+}
+function resetOrt() {
+  ortPromise = null; ortAssets = null;
+  try { delete window.ort; } catch (e) { window.ort = undefined; }
+  document.querySelectorAll('script[data-ort]').forEach(s => s.remove());
+}
+async function getOrt(mode = 'blob') {
   if (!ortPromise) {
     ortPromise = (async () => {
       if (!window.ort) {
-        try { await loadScript(ORT_LOCAL + 'ort.min.js'); ortBase = ORT_LOCAL; }
-        catch (e) { await loadScript(ORT_CDN + 'ort.min.js'); ortBase = ORT_CDN; }
+        const tag = '?v=' + Date.now();
+        try { await loadScript(ORT_LOCAL + 'ort.min.js' + tag, true); ortBase = ORT_LOCAL; }
+        catch (e) { await loadScript(ORT_CDN + 'ort.min.js', true); ortBase = ORT_CDN; }
       }
       if (!window.ort) throw new Error('onnxruntime-web did not load');
       return window.ort;
@@ -70,11 +106,12 @@ async function getOrt(mode = 'prefix') {
   }
   const ort = await ortPromise;
   ort.env.wasm.numThreads = 1; ort.env.wasm.simd = true; ort.env.wasm.proxy = false;
-  if (mode === 'prefix') ort.env.wasm.wasmPaths = ortBase;
-  else { // Android's asset server can serve .mjs/.wasm with a wrong MIME type: hand ort Blob URLs instead
-    const mjs = await (await fetch(ortBase + 'ort-wasm-simd-threaded.mjs')).text();
-    const wasm = await fetchBytes(ortBase + 'ort-wasm-simd-threaded.wasm');
-    ort.env.wasm.wasmPaths = { mjs: URL.createObjectURL(new Blob([mjs], { type: 'text/javascript' })), wasm: URL.createObjectURL(new Blob([wasm], { type: 'application/wasm' })) };
+  if (mode === 'prefix') { ort.env.wasm.wasmPaths = ortBase; }
+  else { // Blob URLs sidestep Android's asset server serving .mjs/.wasm with the wrong MIME type
+    const a = await getOrtAssets();
+    ortBase = a.base;
+    if (!ort.__blobPaths) ort.__blobPaths = { mjs: URL.createObjectURL(new Blob([a.mjs], { type: 'text/javascript' })), wasm: URL.createObjectURL(new Blob([a.wasm], { type: 'application/wasm' })) };
+    ort.env.wasm.wasmPaths = ort.__blobPaths;
   }
   ortMode = mode; return ort;
 }
@@ -101,15 +138,17 @@ function audioCtx() {
 
 /* ---------------------------------------------------------------- Piper synthesis */
 async function createSession(buf) {
-  let lastErr;
-  for (const mode of ['prefix', 'blob']) {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  const errs = [];
+  for (const mode of ['blob', 'prefix']) { // each attempt starts from a fresh ort, because ort refuses to retry after a failed start
     try {
+      resetOrt();
       const ort = await getOrt(mode);
-      const sess = await ort.InferenceSession.create(buf instanceof Uint8Array ? buf : new Uint8Array(buf), { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
+      const sess = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
       return { ort, sess };
-    } catch (e) { lastErr = e; ortPromise = ortPromise; }
+    } catch (e) { errs.push(mode + ': ' + errText(e)); }
   }
-  throw new Error('Could not start the voice engine (' + errText(lastErr) + ')');
+  throw new Error('Could not start the voice engine (' + errs.join(' | ') + ')');
 }
 
 async function synthIds(ids, speaker, speed) {
